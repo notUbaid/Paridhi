@@ -1,0 +1,21 @@
+{
+  "name": "paridhi",
+  "version": "1.0.0",
+  "description": "PARIDHI: Autonomous Perimeter Intelligence & Cryptographic Land Defense System for Diaspora Real Estate",
+  "scripts": {
+    "test": "cd services && npm test",
+    "start:backend": "cd services && npm start",
+    "start:web": "cd web && npm run dev",
+    "build:web": "cd web && npm run build"
+  },
+  "keywords": [
+    "perimeter-security",
+    "nri-property-defense",
+    "bsa-2023",
+    "cryptographic-evidence",
+    "cadastral-monitoring",
+    "edge-ai"
+  ],
+  "author": "Paridhi Sovereign Engineering Team",
+  "license": "UNLICENSED"
+}
