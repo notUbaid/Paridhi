@@ -1,0 +1,39 @@
+name: Paridhi Sovereign CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-and-verify:
+    name: Automated Cryptographic & Edge Verification Suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm --prefix services install
+          npm --prefix web install
+          npm install
+
+      - name: Run automated test suite (7/7 tests)
+        run: npm test
+
+      - name: Build web command center
+        run: npm run build
+
+      - name: Verify build artifact integrity
+        run: |
+          test -f web/dist/index.html
+          echo "Web client built successfully with 0 errors."

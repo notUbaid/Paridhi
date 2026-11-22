@@ -128,6 +128,27 @@ The web console is designed strictly in **Light Mode Only** using an architectur
 - **BSA 2023 §63 Evidentiary Vault:** Judicial affidavit generator displaying cryptographic primitives, Merkle proofs, and one-click court dossier printing.
 - **7-Stage Founder Pitch Deck:** Interactive pitch walkthrough presenting the problem, hardware specs, legal moat, and unit economics.
 
+### Visual Interface Gallery
+
+<div align="center">
+
+#### Cadastral Survey Blueprint & Land Holdings Ledger
+<img src="assets/screenshots/dashboard-cadastral-overview.png" alt="Cadastral Survey Blueprint" width="95%" />
+
+#### 4K Starvis Optical HUD, 110dB Siren Deterrence & Tactical Ground Escrow
+<img src="assets/screenshots/live-feed-and-marshals.png" alt="Live Feed & Tactical Ground Escrow" width="95%" />
+
+#### BSA 2023 §63 Cryptographic Evidence Vault (Court Affidavit Generator)
+<img src="assets/screenshots/bsa2023-evidence-vault-modal.png" alt="BSA 2023 §63 Cryptographic Evidence Vault" width="95%" />
+
+#### Statutory Section 148A CPC Caveat Petition Lodged with Tahsildar
+<img src="assets/screenshots/section-148a-caveat-modal.png" alt="Statutory Caveat Petition" width="95%" />
+
+#### Interactive 7-Stage Founder Thesis Walkthrough
+<img src="assets/screenshots/founder-pitch-modal.png" alt="Founder Thesis Walkthrough" width="95%" />
+
+</div>
+
 ---
 
 ## 6. Founder & Investor Economics
