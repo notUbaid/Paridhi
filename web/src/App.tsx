@@ -10,7 +10,7 @@ import { EvidenceVaultModal } from './components/EvidenceVaultModal.js';
 import { CaveatModal } from './components/CaveatModal.js';
 import { SimulateIncidentModal } from './components/SimulateIncidentModal.js';
 import { FounderPitchModal } from './components/FounderPitchModal.js';
-import { History } from 'lucide-react';
+import { History, ShieldCheck } from 'lucide-react';
 
 export function App() {
   const [properties, setProperties] = useState<PropertyRecord[]>([]);
@@ -171,14 +171,14 @@ export function App() {
 
   if (!selectedProperty) {
     return (
-      <div className="min-h-screen bg-[#080b11] text-slate-300 flex items-center justify-center font-mono">
+      <div className="min-h-screen bg-[#f8fafc] text-slate-700 flex items-center justify-center font-mono text-sm">
         Connecting to Paridhi Sovereign Defense Network...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#080b11] text-slate-100 flex flex-col antialiased">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col antialiased selection:bg-slate-200">
       {/* Top Sovereign Bar */}
       <Header
         activeSentinelsCount={properties.length}
@@ -191,17 +191,17 @@ export function App() {
         {/* Top Property Selector Bento */}
         <section>
           <div className="flex items-center justify-between mb-2.5">
-            <h2 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider">
+            <h2 className="text-[11px] font-mono font-bold text-slate-500 uppercase tracking-wider">
               Protected Diaspora Land Holdings
             </h2>
             <div className="flex items-center gap-2 text-[11px] font-mono">
               <span
                 className={`inline-block w-2 h-2 rounded-full ${
-                  wsConnected ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'
+                  wsConnected ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'
                 }`}
               />
-              <span className="text-slate-400">
-                {wsConnected ? 'Telemetry Stream Synchronized' : 'Reconnecting Stream...'}
+              <span className="text-slate-500">
+                {wsConnected ? 'Telemetry Synchronized' : 'Reconnecting Telemetry...'}
               </span>
             </div>
           </div>
@@ -246,23 +246,24 @@ export function App() {
             />
 
             {/* Active Threat Ledger */}
-            <div className="bg-[#0b1019] border border-slate-800 rounded-2xl p-5 shadow-xl">
-              <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 mb-3">
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-3">
                 <div className="flex items-center gap-2">
-                  <History className="w-4 h-4 text-cyan-400" />
-                  <h3 className="text-xs font-semibold text-slate-200 font-mono">
+                  <History className="w-4 h-4 text-slate-700" />
+                  <h3 className="text-xs font-semibold text-slate-900 font-mono tracking-tight">
                     Cryptographic Threat Audit Ledger
                   </h3>
                 </div>
-                <span className="text-[10px] font-mono text-slate-400">
-                  {selectedProperty.activeIncidents.length} Events Logged
+                <span className="text-[10px] font-mono text-slate-500">
+                  {selectedProperty.activeIncidents.length} Events Recorded
                 </span>
               </div>
 
               <div className="space-y-2.5 max-h-56 overflow-y-auto">
                 {selectedProperty.activeIncidents.length === 0 ? (
                   <div className="py-8 text-center text-xs text-slate-500 font-mono">
-                    Zero perimeter violations recorded.
+                    <ShieldCheck className="w-6 h-6 text-emerald-600 mx-auto mb-1.5 opacity-80" />
+                    Zero perimeter violations or encroachment signatures recorded.
                   </div>
                 ) : (
                   selectedProperty.activeIncidents.map((incident) => {
@@ -271,16 +272,16 @@ export function App() {
                       <div
                         key={incident.id}
                         onClick={() => setActiveEvidenceIncident(incident)}
-                        className={`p-3 rounded-xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
+                        className={`p-3 rounded-lg border transition-all cursor-pointer flex items-start justify-between gap-3 ${
                           isCritical
-                            ? 'bg-red-950/20 border-red-500/40 hover:bg-red-950/30'
-                            : 'bg-slate-950/80 border-slate-800 hover:border-slate-700'
+                            ? 'bg-rose-50/70 border-rose-200 hover:border-rose-400'
+                            : 'bg-slate-50 border-slate-200 hover:border-slate-300'
                         }`}
                       >
                         <div>
                           <div className="flex items-center gap-2 text-xs font-mono font-bold">
                             <span
-                              className={isCritical ? 'text-red-400' : 'text-amber-400'}
+                              className={isCritical ? 'text-rose-700' : 'text-slate-800'}
                             >
                               {incident.threatType}
                             </span>
@@ -291,7 +292,7 @@ export function App() {
                               })}
                             </span>
                           </div>
-                          <p className="text-[11px] text-slate-300 mt-1 line-clamp-1">
+                          <p className="text-[11px] text-slate-600 mt-1 line-clamp-1">
                             {incident.description}
                           </p>
                           <div className="text-[9px] font-mono text-slate-500 mt-1">
@@ -299,7 +300,7 @@ export function App() {
                           </div>
                         </div>
 
-                        <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-mono font-medium shrink-0">
+                        <span className="px-2 py-0.5 rounded bg-white border border-slate-300 text-slate-800 text-[10px] font-mono font-semibold shrink-0 shadow-2xs">
                           BSA §63
                         </span>
                       </div>

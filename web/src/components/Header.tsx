@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Radio, Clock, Scale, Presentation } from 'lucide-react';
+import { Clock, FileText, CheckCircle2 } from 'lucide-react';
 
 interface HeaderProps {
   activeSentinelsCount: number;
@@ -8,7 +8,6 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  activeSentinelsCount,
   criticalThreatActive,
   onOpenPitchModal
 }) => {
@@ -44,65 +43,64 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   return (
-    <header className="border-b border-slate-800 bg-[#090d14]/90 backdrop-blur-md sticky top-0 z-40 px-6 py-3">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Brand & Sanskrit Name */}
+    <header className="border-b border-slate-200 bg-white sticky top-0 z-40 px-6 py-3.5 shadow-xs">
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Brand identity: Authoritative, architectural, unadorned */}
         <div className="flex items-center gap-3">
-          <div className="relative flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500/20 to-cyan-500/10 border border-emerald-500/40">
-            <span className="text-xl font-bold text-emerald-400 select-none">प</span>
-            {criticalThreatActive && (
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-              </span>
-            )}
+          <div className="w-9 h-9 rounded-md bg-slate-900 text-white flex items-center justify-center font-bold text-lg select-none shrink-0">
+            प
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold tracking-wider text-slate-100 flex items-center gap-2">
-                PARIDHI <span className="text-xs font-normal text-slate-400 font-mono">(परिधि)</span>
-              </h1>
-              <span className="text-[10px] px-2 py-0.5 rounded border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-mono tracking-tight font-semibold">
-                SOVEREIGN DEFENSE
+            <div className="flex items-center gap-2.5">
+              <span className="text-lg font-bold tracking-tight text-slate-900">
+                PARIDHI
+              </span>
+              <span className="text-xs text-slate-500 font-mono">
+                / परिधि
+              </span>
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-medium border border-slate-200">
+                Cadastral Defense Workstation
               </span>
             </div>
-            <p className="text-[11px] text-slate-400">
-              Autonomous Perimeter Intelligence & Cryptographic Land Defense for Diaspora Real Estate
-            </p>
+            <div className="text-[11px] text-slate-500 tracking-normal">
+              Autonomous Off-Grid Boundary Intelligence & Statutory Evidence Custody (BSA 2023)
+            </div>
           </div>
         </div>
 
-        {/* Global Diaspora Clock & Actions */}
+        {/* Global Diaspora Time & Key Statutory Stamps */}
         <div className="flex items-center flex-wrap gap-3 text-xs">
-          {/* Dual Diaspora Time Sync */}
-          <div className="flex items-center gap-2 bg-slate-900/80 border border-slate-800 rounded-md px-2.5 py-1 text-slate-300 font-mono">
-            <Clock className="w-3.5 h-3.5 text-cyan-400" />
+          {/* Dual Diaspora Time Engine */}
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/90 rounded-lg px-3 py-1.5 text-slate-700 font-mono text-[11px]">
+            <Clock className="w-3.5 h-3.5 text-slate-500" />
             <span className="text-slate-400">Ground:</span>
-            <span className="text-cyan-300 font-medium">{istTime}</span>
-            <span className="text-slate-600">|</span>
-            <span className="text-slate-400">Silicon Valley:</span>
-            <span className="text-slate-200">{pstTime}</span>
+            <span className="text-slate-900 font-semibold">{istTime}</span>
+            <span className="text-slate-300">|</span>
+            <span className="text-slate-400">Owner:</span>
+            <span className="text-slate-700 font-medium">{pstTime}</span>
           </div>
 
-          {/* BSA 2023 Statutory Compliance */}
-          <div className="flex items-center gap-1.5 bg-slate-900/80 border border-emerald-900/50 rounded-md px-2.5 py-1 text-emerald-300 font-mono">
-            <Scale className="w-3.5 h-3.5 text-emerald-400" />
-            <span>BSA 2023 §63 Compliant</span>
+          {/* Statutory Court Stamp */}
+          <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1.5 text-emerald-800 text-[11px] font-medium">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <span>BSA 2023 §63 Certified</span>
           </div>
 
-          {/* Sentinel Status */}
-          <div className="flex items-center gap-1.5 bg-slate-900/80 border border-slate-800 rounded-md px-2.5 py-1 font-mono">
-            <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-            <span className="text-slate-400">{activeSentinelsCount} Online</span>
-          </div>
+          {/* Incident Alert indicator if critical */}
+          {criticalThreatActive && (
+            <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5 text-red-700 text-[11px] font-medium animate-pulse">
+              <span className="w-2 h-2 rounded-full bg-red-600"></span>
+              <span>Active Breach Triggered</span>
+            </div>
+          )}
 
-          {/* Founder Pitch Deck Mode Button */}
+          {/* Founder Presentation Dossier Action */}
           <button
             onClick={onOpenPitchModal}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-gradient-to-r from-cyan-600/30 to-emerald-600/30 hover:from-cyan-600/50 hover:to-emerald-600/50 border border-cyan-500/50 text-cyan-300 text-xs font-mono font-semibold shadow-lg shadow-cyan-950/40 transition-colors"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs transition-colors shadow-xs"
           >
-            <Presentation className="w-3.5 h-3.5" />
-            <span>Founder Pitch</span>
+            <FileText className="w-3.5 h-3.5" />
+            <span>Founder Brief & Thesis</span>
           </button>
         </div>
       </div>

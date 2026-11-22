@@ -1,6 +1,6 @@
 import React from 'react';
 import type { PropertyRecord } from '../types.js';
-import { MapPin, Globe, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { MapPin, AlertCircle, ShieldCheck, FileWarning } from 'lucide-react';
 
 interface PropertySelectorProps {
   properties: PropertyRecord[];
@@ -24,59 +24,54 @@ export const PropertySelector: React.FC<PropertySelectorProps> = ({
           <button
             key={property.id}
             onClick={() => onSelectProperty(property.id)}
-            className={`text-left p-3.5 rounded-xl border transition-all duration-200 relative overflow-hidden ${
+            className={`text-left p-4 rounded-xl border transition-all duration-150 relative bg-white ${
               isSelected
-                ? 'bg-slate-900/90 border-cyan-500/70 shadow-lg shadow-cyan-950/40 ring-1 ring-cyan-500/40'
-                : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/40'
+                ? 'border-slate-900 ring-2 ring-slate-900 shadow-md'
+                : 'border-slate-200 hover:border-slate-400 hover:shadow-xs'
             }`}
           >
-            {/* Top highlight bar */}
-            {isSelected && (
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-emerald-400 to-cyan-500" />
-            )}
-
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-sm font-semibold text-slate-100 flex items-center gap-1.5">
+                <div className="text-sm font-bold text-slate-900 tracking-tight">
                   {property.name}
-                </h2>
-                <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
-                  <MapPin className="w-3 h-3 text-cyan-400 shrink-0" />
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-600 mt-1">
+                  <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                   <span>
-                    Survey {property.cadastre.surveyNumber} • {property.cadastre.mandalTaluk},{' '}
+                    Survey {property.cadastre.surveyNumber} • {property.cadastre.village},{' '}
                     {property.cadastre.district}
                   </span>
                 </div>
               </div>
 
-              {/* Status Badge */}
+              {/* Status Indicator */}
               {hasCritical ? (
-                <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/40 text-red-400 font-medium shrink-0 animate-pulse">
-                  <AlertTriangle className="w-2.5 h-2.5" />
-                  BREACH
+                <span className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-red-50 border border-red-200 text-red-700 shrink-0">
+                  <AlertCircle className="w-3 h-3 text-red-600" />
+                  Breach Alert
                 </span>
               ) : hasWarning ? (
-                <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/40 text-amber-400 font-medium shrink-0">
-                  <AlertTriangle className="w-2.5 h-2.5" />
-                  RADAR FLAG
+                <span className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-700 shrink-0">
+                  <FileWarning className="w-3 h-3 text-amber-600" />
+                  Mutation Flag
                 </span>
               ) : (
-                <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 font-medium shrink-0">
-                  <ShieldCheck className="w-2.5 h-2.5" />
-                  SECURED
+                <span className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 shrink-0">
+                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                  Clear & Intact
                 </span>
               )}
             </div>
 
-            {/* Owner & Valuation Details */}
-            <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
-              <div className="flex items-center gap-1 text-slate-400">
-                <Globe className="w-3 h-3 text-slate-500" />
-                <span className="truncate max-w-[140px]">{property.ownerOverseasCity}</span>
+            {/* Metrics footer */}
+            <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <div>
+                <span className="text-slate-400">Owner:</span>{' '}
+                <span className="text-slate-700 font-medium">{property.ownerName.split(' ')[0]} ({property.ownerOverseasCity.split(',')[0]})</span>
               </div>
-              <div className="font-mono text-slate-300 font-medium flex items-center">
-                <span>₹{(property.cadastre.marketValuationINR / 10000000).toFixed(1)} Cr</span>
-                <span className="text-slate-500 ml-1.5">({property.cadastre.areaAcres} Ac)</span>
+              <div className="font-mono text-slate-900 font-semibold">
+                ₹{(property.cadastre.marketValuationINR / 10000000).toFixed(1)} Cr{' '}
+                <span className="text-slate-400 font-normal">({property.cadastre.areaAcres} Ac)</span>
               </div>
             </div>
           </button>
