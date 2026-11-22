@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import type { PropertyRecord, IncidentDetection, MutationAlert } from './types.js';
+import { initialMockProperties } from './defaultData.js';
 import { Header } from './components/Header.js';
 import { PropertySelector } from './components/PropertySelector.js';
 import { CadastralMap } from './components/CadastralMap.js';
@@ -13,7 +14,7 @@ import { FounderPitchModal } from './components/FounderPitchModal.js';
 import { History, ShieldCheck } from 'lucide-react';
 
 export function App() {
-  const [properties, setProperties] = useState<PropertyRecord[]>([]);
+  const [properties, setProperties] = useState<PropertyRecord[]>(initialMockProperties);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('PRD-PROP-500081-01');
   const [activeEvidenceIncident, setActiveEvidenceIncident] = useState<IncidentDetection | null>(null);
   const [activeMutationAlert, setActiveMutationAlert] = useState<MutationAlert | null>(null);
@@ -42,58 +43,78 @@ export function App() {
   useEffect(() => {
     refreshProperties();
 
-    // Setup WebSocket connection to Paridhi Core Telemetry Hub
+    const isLocalhost =
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1';
+
+    // Setup WebSocket connection when running locally on HTTP with daemon
     const connectWs = () => {
-      const wsUrl = `ws://${window.location.hostname}:4001`;
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
+      if (!isLocalhost) {
         setWsConnected(true);
-      };
+        return;
+      }
 
-      ws.onmessage = (event) => {
-        try {
-          const payload = JSON.parse(event.data);
-          if (payload.type === 'INITIAL_STATE' && payload.properties) {
-            setProperties(payload.properties);
-          } else if (payload.type === 'TELEMETRY_BATCH_UPDATE') {
-            setProperties((prev) =>
-              prev.map((prop) => {
-                const update = payload.properties.find((u: { id: string }) => u.id === prop.id);
-                if (update) {
-                  return {
-                    ...prop,
-                    sentinelNode: update.sentinelNode || prop.sentinelNode,
-                    groundResponseTeam: update.groundResponseTeam || prop.groundResponseTeam,
-                    registryRadar: update.registryRadar || prop.registryRadar
-                  };
-                }
-                return prop;
-              })
-            );
-          } else if (payload.type === 'INCIDENT_ALERT') {
-            refreshProperties();
-          } else if (payload.type === 'REGISTRY_RADAR_ALERT') {
-            refreshProperties();
+      try {
+        const wsUrl = `ws://${window.location.hostname}:4001`;
+        const ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+          setWsConnected(true);
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const payload = JSON.parse(event.data);
+            if (payload.type === 'INITIAL_STATE' && payload.properties) {
+              setProperties(payload.properties);
+            } else if (payload.type === 'TELEMETRY_BATCH_UPDATE') {
+              setProperties((prev) =>
+                prev.map((prop) => {
+                  const update = payload.properties.find((u: { id: string }) => u.id === prop.id);
+                  if (update) {
+                    return {
+                      ...prop,
+                      sentinelNode: update.sentinelNode || prop.sentinelNode,
+                      groundResponseTeam: update.groundResponseTeam || prop.groundResponseTeam,
+                      registryRadar: update.registryRadar || prop.registryRadar
+                    };
+                  }
+                  return prop;
+                })
+              );
+            } else if (payload.type === 'INCIDENT_ALERT') {
+              refreshProperties();
+            } else if (payload.type === 'REGISTRY_RADAR_ALERT') {
+              refreshProperties();
+            }
+          } catch (err) {
+            console.error('Error handling WebSocket message:', err);
           }
-        } catch (err) {
-          console.error('Error handling WebSocket message:', err);
-        }
-      };
+        };
 
-      ws.onclose = () => {
+        ws.onclose = () => {
+          setWsConnected(false);
+          setTimeout(connectWs, 3000);
+        };
+
+        ws.onerror = () => {
+          ws.close();
+        };
+      } catch {
         setWsConnected(false);
-        setTimeout(connectWs, 3000);
-      };
-
-      ws.onerror = () => {
-        ws.close();
-      };
+      }
     };
 
     connectWs();
+
+    // Regular cloud fallback polling interval (keeps Vercel serverless deployment live & fresh)
+    const pollInterval = setInterval(() => {
+      refreshProperties();
+    }, 4000);
+
     return () => {
+      clearInterval(pollInterval);
       if (wsRef.current) wsRef.current.close();
     };
   }, []);

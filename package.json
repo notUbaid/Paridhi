@@ -1,12 +1,27 @@
 {
   "name": "paridhi",
   "version": "1.0.0",
-  "description": "PARIDHI: Autonomous Perimeter Intelligence & Cryptographic Land Defense System for Diaspora Real Estate",
+  "type": "module",
+  "workspaces": [
+    "web",
+    "services"
+  ],
   "scripts": {
-    "test": "cd services && npm test",
-    "start:backend": "cd services && npm start",
-    "start:web": "cd web && npm run dev",
-    "build:web": "cd web && npm run build"
+    "build": "npm --prefix web run build",
+    "test": "npm --prefix services test",
+    "start": "npm --prefix services start",
+    "start:backend": "npm --prefix services start",
+    "start:web": "npm --prefix web run dev"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.1",
+    "typescript": "^5.7.2"
   },
   "keywords": [
     "perimeter-security",
@@ -17,5 +32,5 @@
     "edge-ai"
   ],
   "author": "Paridhi Sovereign Engineering Team",
-  "license": "UNLICENSED"
+  "license": "MIT"
 }

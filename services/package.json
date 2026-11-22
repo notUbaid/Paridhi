@@ -6,7 +6,7 @@
   "scripts": {
     "start": "tsx src/server.ts",
     "dev": "tsx watch src/server.ts",
-    "test": "node --test dist/**/*.test.js || tsx test/runTests.ts"
+    "test": "tsx test/runTests.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",

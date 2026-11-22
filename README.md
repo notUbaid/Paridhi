@@ -195,7 +195,22 @@ python sentinel_daemon.py
 
 ---
 
-## 8. Directory Architecture
+## 8. Deploying to Vercel
+
+Paridhi is pre-configured for zero-config Vercel deployment:
+
+### One-Click Git Deployment
+1. Import `https://github.com/notUbaid/Paridhi` into your Vercel Dashboard.
+2. Vercel automatically detects `vercel.json`:
+   - **Framework Preset:** Vite
+   - **Build Command:** `npm run build`
+   - **Output Directory:** `web/dist`
+   - **Serverless API:** Automatically mapped via `api/index.ts`
+3. Click **Deploy**. Both the Light-Mode Workstation UI and the serverless REST API endpoints (`/api/properties`, `/api/.../certificate`, `/api/.../caveat`) will go live immediately.
+
+---
+
+## 9. Directory Architecture
 
 ```
 paridhi/
@@ -240,7 +255,7 @@ paridhi/
 
 ---
 
-## 9. Statutory & Legal Citations
+## 10. Statutory & Legal Citations
 
 - **Bharatiya Sakshya Adhiniyam, 2023 (Act No. 47 of 2023):** Section 63 (Admissibility of electronic records in judicial proceedings) and Section 63(4) (Statutory certificate requirements).
 - **Code of Civil Procedure, 1908 (Act No. 5 of 1908):** Section 148A (Right to lodge a caveat) & Order XXXIX Rules 1 & 2 (Temporary injunctions).
@@ -249,6 +264,6 @@ paridhi/
 
 ---
 
-## 10. License
+## 11. License
 
 Licensed under the MIT License. Copyright © 2026 Paridhi Sovereign Engineering Systems.
