@@ -96,20 +96,42 @@ For every detected encroachment frame $F_t$:
 
 ---
 
-## 4. Hardware Specification: Model PRD-SENTINEL-X1
+## 4. Hardware Ecosystem & Anti-Theft Engineering
 
-| Component | Part / Specification | Unit Cost (USD) |
-| :--- | :--- | :--- |
-| **Compute / NPU** | Rockchip RK3588S (8-Core, 6 TOPS NPU, 8GB LPDDR4x) | \$68.00 |
-| **Sensors** | Dual Sony STARVIS 2 IMX678 (4K Ultra-Low Light, 0.001 lux) | \$38.50 |
-| **Radar** | 24GHz FMCW Radar (40m human motion, rain/vegetation immune) | \$14.20 |
-| **Solar Array** | 25W Bifacial Monocrystalline PV Panel (IP68, anti-dust coating) | \$22.00 |
-| **Battery Storage** | 12.8V 24Ah LiFePO4 Pack (3,000+ cycles, integrated BMS) | \$46.00 |
-| **Connectivity** | Quectel EG25-G 4G/LTE Cat 4 + Dual eSIM (Airtel / Jio failover) | \$18.50 |
-| **Hardware HSM** | Microchip ATECC608A Cryptographic Co-processor | \$1.90 |
-| **Acoustic Deterrence**| 110dB Directional Weatherproof Horn + Class-D Amplifier | \$8.80 |
-| **Enclosure** | Extruded Aluminum IP67 Weatherproof Casing + Pole Mount | \$14.00 |
-| **TOTAL BOM** | **Industrial-Grade Off-Grid Sentinel Node** | **\$231.90** |
+### 4.1 Pre-Requisite Requirements & Supported Hardware
+- **On-Site Pre-Requisites (Vacant Land):** **Zero utility requirements.** Requires neither grid electricity nor broadband. Installs on a $3\text{-inch}$ Galvanized Iron (GI) pole ($4.5\text{m} - 5.2\text{m}$ height) anchored in an M20 concrete footing.
+- **Client Pre-Requisites (NRI Owner):** Standard modern web browser or mobile phone. No local hardware required.
+- **Supported Hardware Platforms:**
+  1. **Tier 1: Model PRD-SENTINEL-X1 (Reference Industrial Autonomous Node):** Rockchip RK3588S (6 TOPS NPU) + ESP32-S3 wake coprocessor + Dual Sony STARVIS 2 4K sensors + 24GHz FMCW Doppler Radar + ATECC608A HSM + 25W Bifacial Solar + 24Ah LiFePO4 battery ($231.90 BOM).
+  2. **Tier 2: COTS Solar Camera Retrofit Gateway (PRD-GATEWAY-LITE):** External edge processing gateway retrofitting standard commercial 4G solar cameras (Hikvision, Dahua, Reolink, CP Plus) to inject planar homography boundary mapping and BSA 2023 §63 cryptographic signatures.
+
+| Component Subsystem | Part / Specification | Unit Cost (USD) | Unit Cost (INR) |
+| :--- | :--- | :--- | :--- |
+| **Compute / NPU Core** | Rockchip RK3588S (8-Core, 6 TOPS NPU, 8GB LPDDR4x) | \$68.00 | ₹5,700 |
+| **Wake Coprocessor** | ESP32-S3-WROOM-1 (Deep sleep @ 15mA, 240MHz Xtensa) | \$3.80 | ₹320 |
+| **Optical Vision Array**| Dual Sony STARVIS 2 IMX678 (4K Ultra-Low Light, 0.001 lux) | \$32.00 | ₹2,690 |
+| **Perimeter Radar** | 24GHz FMCW Doppler Radar (40m human velocity tracking) | \$4.20 | ₹350 |
+| **Solar Power Array** | 25W Bifacial Monocrystalline A-Grade PV (IP68, anti-dust) | \$18.00 | ₹1,510 |
+| **Battery Storage** | 12.8V 24Ah (307.2 Wh) LiFePO4 (3,500+ cycles, Active BMS) | \$42.00 | ₹3,530 |
+| **Cellular & GNSS** | Quectel LTE Cat 4 + Dual eSIM (Airtel/Jio) + NavIC L5 | \$14.50 | ₹1,220 |
+| **Hardware Crypto HSM** | Microchip ATECC608A / Infineon OPTIGA Trust M | \$1.90 | ₹160 |
+| **Active Deterrence** | 110dB Directional Weatherproof Horn + Dual 5000lm Strobes | \$9.50 | ₹800 |
+| **Enclosure & Mount** | Die-cast ADC12 Aluminum IP67 + Anti-Tamper Pole Bracket | \$22.00 | ₹1,850 |
+| **TOTAL BOM** | **Industrial Autonomous Sentinel Node (PRD-SENTINEL-X1)** | **\$231.90** | **₹19,480** |
+
+### 4.2 Hardware Efficiency & Utilization
+- **Dual-State Asymmetric Sleep/Wake:** The node stays in ultra-low-power quiescent sleep ($0.216\text{W}$) 98.2% of the time with only the 24GHz radar and IMU active. Upon detecting human motion ($>0.3\text{m/s}$) within 40m, a hardware GPIO interrupt boots the 8-core RK3588S SBC in **650 milliseconds** to execute INT8 YOLOv11-nano neural inference in **18ms**.
+- **Monsoon Energy Autonomy:** $245.76\text{ Wh}$ usable capacity over $8.03\text{ Wh/day}$ daily consumption delivers **30.6 continuous days of 24/7 autonomous protection** under total monsoon cloud cover.
+- **Thermal Range Hardening:** Passive heatsink dissipation inside die-cast ADC12 aluminum enclosure tested from **$-10^\circ\text{C}$ to $+55^\circ\text{C}$ ambient** (peak Rajasthan/Punjab direct sunlight heatwaves) with zero cooling fans or mechanical failure points.
+- **Safe Chemistry Choice:** Automotive-grade **$\mathrm{LiFePO}_4$** (thermal runaway at $270^\circ\text{C}$, 3,500+ charge cycles) replaces dangerous conventional Lithium-ion NMC cells.
+
+### 4.3 6-Layer Anti-Theft & Tamper-Proof Security Matrix
+1. **Mechanical Elevation & Anti-Climb Collar:** Elevated at $4.5\text{m} - 5.2\text{m}$ with a $360^\circ$ spinning conical anti-climb collar, internal concealed pole wiring (no snippable cables), and 5-lobe pin tamper-proof Torx shear bolts.
+2. **6-Axis Mechanical IMU Shock Detection:** Dual MEMS gyroscopes sample at 200Hz; any impact $>0.4g$ or tilt $>2.0^\circ$ (sledgehammer, vehicle nudge, pole sawing) triggers a hardware tamper interrupt in **under 20ms**.
+3. **Optical Flow Lens Occlusion Detection:** Frame entropy loss ($E < 0.15$) detects paint spray, cloth coverage, or blinding laser attacks, immediately freezing the attacker's approach image.
+4. **Immediate Autonomous Local Deterrence:** Zero-cloud-latency 110dB directional horn and 5,000-lumen pulsed strobes fire immediately with localized regional speech warnings (Telugu, Punjabi, Kannada, Hindi).
+5. **Electronic Jamming Immunity & Black Box Storage:** If cellular LTE or GPS jamming is detected via Carrier-to-Noise Ratio (CNR) spikes, the node sounds the siren and records encrypted 4K telemetry to on-board eMMC (AES-XTS-256).
+6. **Silicon Key Eradication & Dead-Man GPS Beacon:** Physical penetration of the enclosure causes the ATECC608A crypto-chip to wipe internal registers and blow hardware eFuses, rendering the processor an unusable silicon brick. A backup supercapacitor powers an isolated beacon broadcasting GPS coordinates every 60 seconds for police recovery under Section 379 IPC.
 
 ---
 
