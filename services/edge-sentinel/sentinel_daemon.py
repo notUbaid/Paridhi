@@ -58,7 +58,7 @@ class HardwareCryptoModule:
         return hashlib.sha256(f"{sha256_hex}:{private_key_id}:PARIDHI_ROOT".encode()).hexdigest()
 
 class SentinelEdgeDaemon:
-    def __init__(self, node_id="PRD-NODE-HYD-0418", property_id="PRD-PROP-500081-01", core_url="http://localhost:4000"):
+    def __init__(self, node_id="PRD-NODE-HYD-0418", property_id="prop-shamshabad-412", core_url="http://localhost:4000"):
         self.node_id = node_id
         self.property_id = property_id
         self.core_url = core_url

@@ -26,8 +26,11 @@ jobs:
           npm --prefix web install
           npm install
 
-      - name: Run automated test suite (8/8 tests)
+      - name: Run automated test suite (10/10 tests)
         run: npm test
+
+      - name: Run web client linting
+        run: npm --prefix web run lint
 
       - name: Build web production client
         run: npm run build

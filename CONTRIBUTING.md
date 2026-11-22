@@ -70,6 +70,6 @@ We welcome computer vision improvements for weekly visual timelapse change detec
 
 ## 4. Submitting Pull Requests
 
-- Ensure all 8 test suites pass (`npm test`).
+- Ensure all 10 test suites pass (`npm test`).
 - Ensure `npm run build` exits with code 0.
 - Write clear conventional commit messages (e.g. `feat: add Tamil Nadu Patta Chitta registry connector`).

@@ -10,7 +10,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38bdf8.svg?style=flat-square)](https://tailwindcss.com/)
 [![Node.js](https://img.shields.io/badge/Node.js-22+-green.svg?style=flat-square)](https://nodejs.org/)
 [![Compliance](https://img.shields.io/badge/Statutory_Legal-BSA_2023_§63_%7C_CPC_§148A-emerald.svg?style=flat-square)](https://indiacode.nic.in)
-[![Tests](https://img.shields.io/badge/Tests-8%2F8_Passing-brightgreen.svg?style=flat-square)](services/test/runTests.ts)
+[![Tests](https://img.shields.io/badge/Tests-10%2F10_Passing-brightgreen.svg?style=flat-square)](services/test/runTests.ts)
 [![License](https://img.shields.io/badge/License-MIT-slate.svg?style=flat-square)](LICENSE)
 
 *Built to solve the real problem: "How can NRIs living 8,000 miles away protect vacant plots in India from encroachment, material dumping, and fraudulent title mutations?"*

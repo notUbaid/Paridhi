@@ -61,6 +61,22 @@ export const mockProperties: PropertyRecord[] = [
         'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=600&q=80',
         'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80'
       ],
+      photoDetails: [
+        {
+          url: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80',
+          cornerPeg: 'Peg #1 (North-East Corner Stone)',
+          captureTimestamp: 'Nov 19, 2026, 11:32:15 IST',
+          gpsCoordinates: { lat: 17.240312, lng: 78.429451 },
+          geofenceVerified: true
+        },
+        {
+          url: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=1200&q=80',
+          cornerPeg: 'Peg #3 (South-West Corner Stone)',
+          captureTimestamp: 'Nov 19, 2026, 11:41:04 IST',
+          gpsCoordinates: { lat: 17.240189, lng: 78.429288 },
+          geofenceVerified: true
+        }
+      ],
       nextScheduledDate: 'Dec 18, 2026',
       verifiedBadge: true
     },
@@ -101,7 +117,10 @@ export const mockProperties: PropertyRecord[] = [
       barCouncilNumber: 'TS/1042/1998',
       jurisdictionCourt: 'Telangana High Court & Rajendranagar Civil Court',
       standingCaveatActive: true,
-      caveatExpiryDate: 'Feb 14, 2027 (Under Section 148A CPC)',
+      caveatLodgedDate: 'Oct 28, 2026',
+      caveatExpiryDate: 'Jan 26, 2027 (Section 148A CPC 90-Day Limit)',
+      daysRemaining: 64,
+      renewalNoticeTriggered: false,
       contactNumber: '+91 94401 88392',
       statutoryNoticeStatus: 'NORMAL_WATCH'
     },
@@ -199,6 +218,15 @@ export const mockProperties: PropertyRecord[] = [
       geotaggedPhotoUrls: [
         'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80'
       ],
+      photoDetails: [
+        {
+          url: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=1200&q=80',
+          cornerPeg: 'Peg #2 (South-East Boundary Stone)',
+          captureTimestamp: 'Nov 16, 2026, 10:14:22 IST',
+          gpsCoordinates: { lat: 13.248352, lng: 77.712614 },
+          geofenceVerified: true
+        }
+      ],
       nextScheduledDate: 'Dec 15, 2026',
       verifiedBadge: true
     },
@@ -221,7 +249,10 @@ export const mockProperties: PropertyRecord[] = [
       barCouncilNumber: 'KAR/554/2004',
       jurisdictionCourt: 'Bengaluru City Civil Court & Devanahalli Civil Court',
       standingCaveatActive: true,
-      caveatExpiryDate: 'Jan 28, 2027',
+      caveatLodgedDate: 'Nov 02, 2026',
+      caveatExpiryDate: 'Jan 31, 2027 (Section 148A CPC 90-Day Limit)',
+      daysRemaining: 69,
+      renewalNoticeTriggered: false,
       contactNumber: '+91 98450 67123',
       statutoryNoticeStatus: 'NORMAL_WATCH'
     },
@@ -303,6 +334,15 @@ export const mockProperties: PropertyRecord[] = [
       geotaggedPhotoUrls: [
         'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=600&q=80'
       ],
+      photoDetails: [
+        {
+          url: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80',
+          cornerPeg: 'Peg #4 (North Boundary Marker)',
+          captureTimestamp: 'Nov 12, 2026, 12:05:40 IST',
+          gpsCoordinates: { lat: 30.642518, lng: 76.786529 },
+          geofenceVerified: true
+        }
+      ],
       nextScheduledDate: 'Dec 11, 2026',
       verifiedBadge: true
     },
@@ -325,7 +365,10 @@ export const mockProperties: PropertyRecord[] = [
       barCouncilNumber: 'PH/2189/2001',
       jurisdictionCourt: 'Punjab & Haryana High Court & Mohali District Court',
       standingCaveatActive: true,
-      caveatExpiryDate: 'March 10, 2027',
+      caveatLodgedDate: 'Sep 05, 2026',
+      caveatExpiryDate: 'Dec 04, 2026 (Section 148A CPC 90-Day Limit)',
+      daysRemaining: 11,
+      renewalNoticeTriggered: true,
       contactNumber: '+91 98720 44510',
       statutoryNoticeStatus: 'NORMAL_WATCH'
     },

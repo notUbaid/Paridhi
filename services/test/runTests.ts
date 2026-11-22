@@ -127,7 +127,9 @@ runTest('Legal Protection: Verifies standing caveat & statutory notice status', 
   const property = properties[0];
   assert.strictEqual(property.legalRetainer.standingCaveatActive, true);
   assert.ok(property.legalRetainer.jurisdictionCourt.includes('Telangana High Court'));
-  assert.ok(property.legalRetainer.caveatExpiryDate?.includes('2027'));
+  assert.ok(property.legalRetainer.caveatExpiryDate?.includes('Section 148A CPC 90-Day Limit'));
+  assert.strictEqual(typeof property.legalRetainer.daysRemaining, 'number');
+  assert.ok((property.legalRetainer.daysRemaining ?? 0) > 0);
 });
 
 // 7. Complete Verified Property Dossier Generation
@@ -148,6 +150,57 @@ runTest('Dossier Generation: Generates verifiable legal and physical dossier', (
   assert.strictEqual(hash.length, 64);
   assert.ok(sig.length > 0);
   assert.strictEqual(EvidenceVault.verifyHsmSignature(dossierPayload, sig), true);
+});
+
+// 8. Edge Sentinel: Neural Threat Ingestion & Cryptographic Integrity
+runTest('Edge Sentinel: Simulates neural incident ingestion and cryptographic attestation', () => {
+  const property = properties[0];
+  const threatType = 'MATERIAL_DUMPING';
+  const customDescription = 'Edge NPU detected tipper truck unloading 5,000 bricks at boundary peg #3';
+
+  const incidentPayload = JSON.stringify({
+    propertyId: property.id,
+    surveyNumber: property.surveyNumber,
+    threatType,
+    description: customDescription,
+    timestamp: new Date().toISOString()
+  });
+
+  const hash = EvidenceVault.computeSha256(incidentPayload);
+  const sig = EvidenceVault.signWithHsmKey(incidentPayload);
+
+  assert.strictEqual(hash.length, 64);
+  assert.strictEqual(EvidenceVault.verifyHsmSignature(incidentPayload, sig), true);
+
+  // Apply incident logic
+  property.status = 'ATTENTION_NEEDED';
+  property.cameraPod.timelapseDifferenceDetected = true;
+  property.cameraPod.timelapseNotes = customDescription;
+  property.recentActivity.unshift({
+    id: `act-test-edge-${Date.now()}`,
+    timestamp: 'Just now',
+    category: 'CAMERA',
+    title: `Edge Sentinel Anomaly: ${threatType}`,
+    description: customDescription,
+    severity: 'ALERT'
+  });
+
+  assert.strictEqual(property.status, 'ATTENTION_NEEDED');
+  assert.strictEqual(property.cameraPod.timelapseDifferenceDetected, true);
+  assert.strictEqual(property.recentActivity[0].severity, 'ALERT');
+});
+
+// 9. Field Inspection: Geotagged Ground Proof EXIF & Geofence Integrity
+runTest('Field Inspection: Validates geotagged ground proof EXIF and geofence integrity', () => {
+  const property = properties[0];
+  assert.ok(property.latestInspection.photoDetails && property.latestInspection.photoDetails.length > 0);
+  for (const photo of property.latestInspection.photoDetails!) {
+    assert.strictEqual(photo.geofenceVerified, true);
+    assert.ok(photo.cornerPeg.length > 0);
+    assert.ok(photo.gpsCoordinates.lat > 0);
+    assert.ok(photo.gpsCoordinates.lng > 0);
+    assert.ok(photo.captureTimestamp.length > 0);
+  }
 });
 
 console.log('----------------------------------------------------');

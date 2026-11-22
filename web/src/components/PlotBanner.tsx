@@ -93,7 +93,11 @@ export const PlotBanner: React.FC<PlotBannerProps> = ({ property }) => {
             <div className="text-[10px] text-slate-400 uppercase font-semibold">Legal Protection</div>
             <div className="flex items-center gap-1 text-slate-800 font-medium mt-0.5">
               <Scale className="w-3.5 h-3.5 text-purple-600" />
-              <span>Sec 148A CPC Caveat Active</span>
+              <span>
+                {property.legalRetainer.standingCaveatActive
+                  ? `Sec 148A CPC (${property.legalRetainer.daysRemaining ?? 64}d left)`
+                  : 'Caveat Inactive'}
+              </span>
             </div>
           </div>
         </div>

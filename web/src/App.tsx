@@ -13,10 +13,14 @@ import { RequestInspectionModal } from './components/RequestInspectionModal';
 import { LegalCaveatModal } from './components/LegalCaveatModal';
 import { DossierModal } from './components/DossierModal';
 import { HowItWorksModal } from './components/HowItWorksModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { Toast, type ToastNotification } from './components/Toast';
 
 export const App: React.FC = () => {
   const [properties, setProperties] = useState<PropertyRecord[]>(mockProperties);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>(mockProperties[0].id);
+  const [syncStatus, setSyncStatus] = useState<'LIVE_CLOUD' | 'LOCAL_OFFLINE'>('LOCAL_OFFLINE');
+  const [toast, setToast] = useState<ToastNotification | null>(null);
 
   // Modals
   const [isHowItWorksOpen, setIsHowItWorksOpen] = useState(false);
@@ -28,6 +32,18 @@ export const App: React.FC = () => {
   const activeProperty =
     properties.find((p) => p.id === selectedPropertyId) || properties[0];
 
+  const handleIncomingPayload = (payload: any) => {
+    if (payload.type === 'INITIAL_STATE' && payload.properties) {
+      setProperties(payload.properties);
+      setSyncStatus('LIVE_CLOUD');
+    } else if (payload.type === 'PROPERTY_UPDATED' && payload.property) {
+      setProperties((prev) =>
+        prev.map((p) => (p.id === payload.property.id ? payload.property : p))
+      );
+      setSyncStatus('LIVE_CLOUD');
+    }
+  };
+
   // Fetch live properties from backend if available
   useEffect(() => {
     const fetchProperties = async () => {
@@ -37,43 +53,67 @@ export const App: React.FC = () => {
           const data = await res.json();
           if (data.properties && data.properties.length > 0) {
             setProperties(data.properties);
+            setSyncStatus('LIVE_CLOUD');
           }
         }
       } catch {
-        // Use defaultData in static/offline environments
+        setSyncStatus('LOCAL_OFFLINE');
       }
     };
 
     fetchProperties();
 
-    // WebSocket connection for real-time live events (optional in local daemon)
+    // Real-time synchronization: WebSocket with fallback to Server-Sent Events (SSE)
     let ws: WebSocket | null = null;
+    let eventSource: EventSource | null = null;
+
+    const setupSSE = () => {
+      if (typeof EventSource !== 'undefined' && !eventSource) {
+        eventSource = new EventSource('/api/events');
+        eventSource.onopen = () => setSyncStatus('LIVE_CLOUD');
+        eventSource.onmessage = (event) => {
+          try {
+            const payload = JSON.parse(event.data);
+            handleIncomingPayload(payload);
+          } catch {
+            // ignore malformed frame
+          }
+        };
+        eventSource.onerror = () => {
+          setSyncStatus('LOCAL_OFFLINE');
+        };
+      }
+    };
+
     try {
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsHost = window.location.hostname || 'localhost';
       const wsPort = '4001';
       ws = new WebSocket(`${wsProtocol}//${wsHost}:${wsPort}`);
 
+      ws.onopen = () => {
+        setSyncStatus('LIVE_CLOUD');
+      };
+
       ws.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data);
-          if (payload.type === 'INITIAL_STATE' && payload.properties) {
-            setProperties(payload.properties);
-          } else if (payload.type === 'PROPERTY_UPDATED' && payload.property) {
-            setProperties((prev) =>
-              prev.map((p) => (p.id === payload.property.id ? payload.property : p))
-            );
-          }
+          handleIncomingPayload(payload);
         } catch {
           // ignore malformed message
         }
       };
+
+      ws.onerror = () => {
+        setupSSE();
+      };
     } catch {
-      // WS unavailable
+      setupSSE();
     }
 
     return () => {
       if (ws) ws.close();
+      if (eventSource) eventSource.close();
     };
   }, []);
 
@@ -121,6 +161,12 @@ export const App: React.FC = () => {
         )
       );
     }
+    setToast({
+      id: `toast-${Date.now()}`,
+      type: 'INFO',
+      title: 'Field Inspection Dispatched',
+      message: `Assigned to ${activeProperty.latestInspection.inspectorName}. Target arrival < 48h with geotagged boundary survey.`
+    });
   };
 
   // Handler: Verify State Land Revenue Registry
@@ -171,6 +217,12 @@ export const App: React.FC = () => {
         })
       );
     }
+    setToast({
+      id: `toast-${Date.now()}`,
+      type: 'SUCCESS',
+      title: 'Revenue Registry Polled',
+      message: `${activeProperty.revenueRegistry.portalName} verified. Survey ${activeProperty.surveyNumber} is clean with zero encumbrance.`
+    });
   };
 
   // Handler: Retain Advocate for Legal Notice / Caveat
@@ -195,6 +247,12 @@ export const App: React.FC = () => {
             return p;
           })
         );
+        setToast({
+          id: `toast-${Date.now()}`,
+          type: 'SUCCESS',
+          title: 'Section 148A Caveat Renewed',
+          message: '90-day statutory protection active. District Court & High Court notified against ex-parte orders.'
+        });
       }
     } catch {
       // Local fallback
@@ -241,6 +299,12 @@ export const App: React.FC = () => {
           return p;
         })
       );
+      setToast({
+        id: `toast-${Date.now()}`,
+        type: 'ALERT',
+        title: 'Perimeter Alert Triggered',
+        message: 'Visual anomaly flagged near boundary peg. Dispatched alert to owner & ground inspector.'
+      });
     } else {
       setIsSimulatedTamper(false);
       try {
@@ -254,6 +318,12 @@ export const App: React.FC = () => {
       setProperties((prev) =>
         prev.map((p) => (p.id === activeProperty.id ? JSON.parse(JSON.stringify(baseline)) : p))
       );
+      setToast({
+        id: `toast-${Date.now()}`,
+        type: 'INFO',
+        title: 'Perimeter Alert Cleared',
+        message: 'Property state restored to nominal secure baseline.'
+      });
     }
   };
 
@@ -265,6 +335,7 @@ export const App: React.FC = () => {
         onOpenDossier={() => setIsDossierOpen(true)}
         onSimulateTamper={handleSimulateTamper}
         isSimulatedTamper={isSimulatedTamper}
+        syncStatus={syncStatus}
       />
 
       {/* Property Selector */}
@@ -274,40 +345,43 @@ export const App: React.FC = () => {
         onSelectProperty={setSelectedPropertyId}
       />
 
-      {/* Main Command Dashboard */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-6 space-y-6">
-        {/* Active Plot Summary Banner */}
-        <PlotBanner property={activeProperty} />
+      {/* Main Command Dashboard with Fault Boundary */}
+      <ErrorBoundary>
+        <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-6 space-y-6">
+          {/* Active Plot Summary Banner */}
+          <PlotBanner property={activeProperty} />
 
-        {/* Primary Row: Visual 4G Monitoring + Monthly In-Person Human Audits */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <PlotVisualCard
-            cameraPod={activeProperty.cameraPod}
-            surveyNumber={activeProperty.surveyNumber}
-          />
-          <FieldInspectionCard
-            inspection={activeProperty.latestInspection}
-            onRequestVisit={() => setIsInspectionModalOpen(true)}
-          />
-        </div>
+          {/* Primary Row: Visual 4G Monitoring + Monthly In-Person Human Audits */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <PlotVisualCard
+              cameraPod={activeProperty.cameraPod}
+              surveyNumber={activeProperty.surveyNumber}
+            />
+            <FieldInspectionCard
+              inspection={activeProperty.latestInspection}
+              onRequestVisit={() => setIsInspectionModalOpen(true)}
+              surveyNumber={activeProperty.surveyNumber}
+            />
+          </div>
 
-        {/* Secondary Row: State Land Registry Watch + Legal Retainer */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <RevenueWatchCard
-            registry={activeProperty.revenueRegistry}
-            onVerifyNow={handleVerifyRegistry}
-          />
-          <LegalActionCard
-            legalRetainer={activeProperty.legalRetainer}
-            onOpenCaveatModal={() => setIsCaveatModalOpen(true)}
-            onRetainLawyer={handleRetainLawyer}
-            onDownloadDossier={() => setIsDossierOpen(true)}
-          />
-        </div>
+          {/* Secondary Row: State Land Registry Watch + Legal Retainer */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <RevenueWatchCard
+              registry={activeProperty.revenueRegistry}
+              onVerifyNow={handleVerifyRegistry}
+            />
+            <LegalActionCard
+              legalRetainer={activeProperty.legalRetainer}
+              onOpenCaveatModal={() => setIsCaveatModalOpen(true)}
+              onRetainLawyer={handleRetainLawyer}
+              onDownloadDossier={() => setIsDossierOpen(true)}
+            />
+          </div>
 
-        {/* Chronological Audit Log */}
-        <RecentActivityFeed activities={activeProperty.recentActivity} />
-      </main>
+          {/* Chronological Audit Log */}
+          <RecentActivityFeed activities={activeProperty.recentActivity} />
+        </main>
+      </ErrorBoundary>
 
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-white py-6 px-6 text-xs text-slate-500">
@@ -347,6 +421,9 @@ export const App: React.FC = () => {
         isOpen={isHowItWorksOpen}
         onClose={() => setIsHowItWorksOpen(false)}
       />
+
+      {/* Floating System Toast */}
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
 };

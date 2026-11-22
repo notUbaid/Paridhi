@@ -31,6 +31,17 @@ export interface CameraPodInfo {
   };
 }
 
+export interface InspectionPhotoDetail {
+  url: string;
+  cornerPeg: string;
+  captureTimestamp: string;
+  gpsCoordinates: {
+    lat: number;
+    lng: number;
+  };
+  geofenceVerified: boolean;
+}
+
 export interface FieldInspectionReport {
   id: string;
   inspectionDate: string;
@@ -43,6 +54,7 @@ export interface FieldInspectionReport {
   neighborFeedbackSummary: string;
   summaryNotes: string;
   geotaggedPhotoUrls: string[];
+  photoDetails?: InspectionPhotoDetail[];
   nextScheduledDate: string;
   verifiedBadge: boolean;
 }
@@ -67,7 +79,10 @@ export interface LegalRetainerInfo {
   barCouncilNumber: string;
   jurisdictionCourt: string;
   standingCaveatActive: boolean;
+  caveatLodgedDate?: string;
   caveatExpiryDate?: string;
+  daysRemaining?: number;
+  renewalNoticeTriggered?: boolean;
   contactNumber: string;
   statutoryNoticeStatus: 'NORMAL_WATCH' | 'CAVEAT_LODGED' | 'INJUNCTION_READY';
 }

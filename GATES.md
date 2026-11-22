@@ -39,3 +39,12 @@
   - Replaced generic dark glassmorphism with an authoritative, architectural and legal workstation aesthetic.
   - Pure paper-white surfaces (`#ffffff`), warm bone drafting canvas (`#f8fafc`), hairline slate dividers (`#e2e8f0`), and deep carbon ink typography (`#0f172a`).
   - Tested and visually verified in Playwright browser with clean console (0 errors, 0 warnings).
+
+- [x] **Gate 8: Tiny Council 360° Audit & Production Hardening (P0)**
+  - Full multi-perspective audit completed and documented in `docs/TINY_COUNCIL_AUDIT.md`.
+  - Implemented statutory 90-day Section 148A(5) CPC caveat expiry cycle with renewal alert triggers and 1-click re-filing.
+  - Aligned Python Edge Sentinel daemon with `/api/properties/:id/trigger-incident` and cryptographic Evidence Vault hashing.
+  - Full modal accessibility: WCAG 2.1 AA `Escape` key listeners, backdrop dismissal, and `role="dialog"`.
+  - High-resolution geotagged photo lightbox displaying GPS coordinates, timestamp, and <50m geofence verification.
+  - Added Server-Sent Events (SSE) `/api/events` fallback for serverless deployments where port 4001 WebSockets are unavailable.
+  - Expanded automated test suite: 10/10 tests passing with code 0. Zero lint warnings.

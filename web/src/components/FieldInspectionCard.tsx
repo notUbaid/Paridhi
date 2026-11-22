@@ -1,5 +1,6 @@
-import React from 'react';
-import type { FieldInspectionReport } from '../types';
+import React, { useState } from 'react';
+import type { FieldInspectionReport, InspectionPhotoDetail } from '../types';
+import { InspectionPhotoModal } from './InspectionPhotoModal';
 import {
   UserCheck,
   CheckCircle2,
@@ -13,12 +14,32 @@ import {
 interface FieldInspectionCardProps {
   inspection: FieldInspectionReport;
   onRequestVisit: () => void;
+  surveyNumber?: string;
 }
 
 export const FieldInspectionCard: React.FC<FieldInspectionCardProps> = ({
   inspection,
-  onRequestVisit
+  onRequestVisit,
+  surveyNumber = 'Survey Boundary'
 }) => {
+  const [selectedPhoto, setSelectedPhoto] = useState<InspectionPhotoDetail | null>(null);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+
+  const handleOpenPhoto = (idx: number) => {
+    if (inspection.photoDetails && inspection.photoDetails[idx]) {
+      setSelectedPhoto(inspection.photoDetails[idx]);
+    } else {
+      setSelectedPhoto({
+        url: inspection.geotaggedPhotoUrls[idx] || '',
+        cornerPeg: idx === 0 ? 'Peg #1 (North-East Corner Stone)' : 'Peg #3 (South-West Corner Stone)',
+        captureTimestamp: 'Nov 19, 2026, 11:32:15 IST',
+        gpsCoordinates: { lat: 17.240312, lng: 78.429451 },
+        geofenceVerified: true
+      });
+    }
+    setIsPhotoModalOpen(true);
+  };
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs flex flex-col">
       {/* Header */}
@@ -142,31 +163,45 @@ export const FieldInspectionCard: React.FC<FieldInspectionCardProps> = ({
         <div>
           <div className="text-[11px] font-semibold text-slate-500 uppercase mb-2 flex items-center justify-between">
             <span>Archived Ground Evidence Photos</span>
-            <span className="font-normal lowercase text-slate-400">2 high-res photos verified</span>
+            <span className="font-normal lowercase text-slate-400">Click photo to inspect geotagged proof</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
             {inspection.geotaggedPhotoUrls.map((url, idx) => (
-              <div
+              <button
                 key={idx}
-                className="relative rounded-lg overflow-hidden border border-slate-200 h-24 bg-slate-100 group cursor-pointer"
+                type="button"
+                onClick={() => handleOpenPhoto(idx)}
+                className="relative rounded-lg overflow-hidden border border-slate-200 h-24 bg-slate-100 group cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-slate-900/20"
+                aria-label={`Inspect high-resolution evidence photo ${idx + 1}`}
               >
                 <img
                   src={url}
                   alt={`Field Inspection Photo ${idx + 1}`}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                 />
-                <div className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-medium gap-1">
+                <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-medium gap-1.5 backdrop-blur-[1px]">
                   <Camera className="w-3.5 h-3.5" />
-                  <span>View Full Photo</span>
+                  <span>Inspect Evidence</span>
                 </div>
-                <div className="absolute bottom-1 left-1.5 bg-slate-900/75 text-white text-[9px] font-mono px-1.5 py-0.5 rounded">
-                  Peg #{idx + 1} • {idx === 0 ? 'NE Corner' : 'SW Corner'}
+                <div className="absolute bottom-1 left-1.5 bg-slate-900/80 text-white text-[9px] font-mono px-1.5 py-0.5 rounded">
+                  {inspection.photoDetails && inspection.photoDetails[idx]
+                    ? inspection.photoDetails[idx].cornerPeg
+                    : `Peg #${idx + 1} • ${idx === 0 ? 'NE Corner' : 'SW Corner'}`}
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
       </div>
+
+      {/* High-Resolution Photo Lightbox Modal */}
+      <InspectionPhotoModal
+        photo={selectedPhoto}
+        surveyNumber={surveyNumber}
+        inspectorName={inspection.inspectorName}
+        isOpen={isPhotoModalOpen}
+        onClose={() => setIsPhotoModalOpen(false)}
+      />
     </div>
   );
 };

@@ -6,13 +6,15 @@ interface HeaderProps {
   onOpenDossier: () => void;
   onSimulateTamper: () => void;
   isSimulatedTamper: boolean;
+  syncStatus?: 'LIVE_CLOUD' | 'LOCAL_OFFLINE';
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onOpenHowItWorks,
   onOpenDossier,
   onSimulateTamper,
-  isSimulatedTamper
+  isSimulatedTamper,
+  syncStatus = 'LIVE_CLOUD'
 }) => {
   const [istTime, setIstTime] = useState('');
   const [pstTime, setPstTime] = useState('');
@@ -64,6 +66,20 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-medium border border-emerald-200 flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3 text-emerald-600" />
                 3 Plots Active & Protected
+              </span>
+              <span
+                className={`text-[10px] font-mono px-2 py-0.5 rounded-full border flex items-center gap-1.5 ${
+                  syncStatus === 'LIVE_CLOUD'
+                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                    : 'bg-slate-100 text-slate-600 border-slate-200'
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    syncStatus === 'LIVE_CLOUD' ? 'bg-blue-500 animate-pulse' : 'bg-slate-400'
+                  }`}
+                ></span>
+                <span>{syncStatus === 'LIVE_CLOUD' ? 'Live Cloud Sync' : 'Local Fallback'}</span>
               </span>
             </div>
             <div className="text-[12px] text-slate-500 font-normal">

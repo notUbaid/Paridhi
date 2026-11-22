@@ -5,7 +5,8 @@ import {
   ShieldCheck,
   RefreshCw,
   CheckCircle2,
-  Clock
+  Clock,
+  ExternalLink
 } from 'lucide-react';
 
 interface RevenueWatchCardProps {
@@ -24,6 +25,17 @@ export const RevenueWatchCard: React.FC<RevenueWatchCardProps> = ({ registry, on
     }, 1200);
   };
 
+  const getPortalUrl = () => {
+    if (registry.portalName.includes('Dharani')) {
+      return 'https://dharani.telangana.gov.in';
+    } else if (registry.portalName.includes('Bhoomi')) {
+      return 'https://bhoomoj.karnataka.gov.in';
+    } else if (registry.portalName.includes('Jamabandi')) {
+      return 'https://jamabandi.punjab.gov.in';
+    }
+    return 'https://indiacode.nic.in';
+  };
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs flex flex-col">
       {/* Header */}
@@ -39,14 +51,27 @@ export const RevenueWatchCard: React.FC<RevenueWatchCardProps> = ({ registry, on
           </span>
         </div>
 
-        <button
-          onClick={handleVerify}
-          disabled={isVerifying}
-          className="flex items-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isVerifying ? 'animate-spin' : ''}`} />
-          <span>{isVerifying ? 'Querying State Records...' : 'Poll State Registry'}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <a
+            href={getPortalUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 hover:text-slate-900 transition-colors px-2 py-1 rounded-md border border-slate-200 hover:bg-slate-100"
+            title="Open official state government land portal"
+          >
+            <span>Gov Portal</span>
+            <ExternalLink className="w-3 h-3 text-slate-400" />
+          </a>
+
+          <button
+            onClick={handleVerify}
+            disabled={isVerifying}
+            className="flex items-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isVerifying ? 'animate-spin' : ''}`} />
+            <span>{isVerifying ? 'Querying State Records...' : 'Poll State Registry'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Content */}

@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { LegalRetainerInfo } from '../types';
 import {
   Scale,
   ShieldCheck,
   FileText,
   Award,
-  Download
+  Download,
+  AlertTriangle,
+  CheckCircle2
 } from 'lucide-react';
 
 interface LegalActionCardProps {
@@ -21,6 +23,17 @@ export const LegalActionCard: React.FC<LegalActionCardProps> = ({
   onRetainLawyer,
   onDownloadDossier
 }) => {
+  const [isLodging, setIsLodging] = useState(false);
+  const isExpiringSoon = (legalRetainer.daysRemaining ?? 64) <= 15;
+
+  const handleRetain = () => {
+    setIsLodging(true);
+    onRetainLawyer();
+    setTimeout(() => {
+      setIsLodging(false);
+    }, 1500);
+  };
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs flex flex-col">
       {/* Header */}
@@ -64,24 +77,47 @@ export const LegalActionCard: React.FC<LegalActionCardProps> = ({
             </div>
 
             <div className="text-right">
-              <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                Standing Caveat Active
+              <span
+                className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                  isExpiringSoon
+                    ? 'bg-amber-50 text-amber-800 border-amber-300'
+                    : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                }`}
+              >
+                {isExpiringSoon ? (
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                ) : (
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                )}
+                <span>
+                  {isExpiringSoon
+                    ? `Renewal Alert • ${legalRetainer.daysRemaining}d Left`
+                    : `Caveat Active • ${legalRetainer.daysRemaining ?? 64}d Left`}
+                </span>
               </span>
-              <div className="text-[11px] text-slate-400 mt-1">
-                Valid until {legalRetainer.caveatExpiryDate}
+              <div className="text-[11px] text-slate-400 mt-1 font-mono">
+                Sec 148A(5) CPC Limit: {legalRetainer.caveatExpiryDate}
               </div>
             </div>
           </div>
 
           {/* Legal Protection Context */}
           <div className="py-4 space-y-3">
+            {isExpiringSoon && (
+              <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="leading-relaxed">
+                  <span className="font-semibold">Section 148A(5) CPC Expiration Warning:</span> Statutory caveat expires in {legalRetainer.daysRemaining} days. Under Indian civil law, caveats must be renewed every 90 days. Click below to file a timely 90-day re-lodgement before the Sub-Registrar.
+                </div>
+              </div>
+            )}
+
             <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200/90 text-xs leading-relaxed text-slate-700">
               <div className="font-semibold text-slate-900 mb-1 flex items-center gap-1.5">
                 <Award className="w-3.5 h-3.5 text-slate-600" />
                 <span>Statutory Caveat Protection (Section 148A CPC)</span>
               </div>
-              Under Indian civil law, local land grabbers often seek ex-parte temporary injunctions by filing bogus suits without naming the overseas owner. A Section 148A Caveat legally binds the Civil Court and Tahsildar to issue direct summons to your advocate before granting any order.
+              Under Indian civil procedure, a Section 148A Caveat legally binds the Civil Court and Tahsildar to issue direct summons to your advocate before granting any ex-parte interim injunction or mutation. Each caveat is legally valid for exactly 90 days.
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
@@ -103,11 +139,21 @@ export const LegalActionCard: React.FC<LegalActionCardProps> = ({
         {/* Action Buttons */}
         <div className="pt-2 flex flex-col sm:flex-row items-center gap-2.5">
           <button
-            onClick={onRetainLawyer}
+            onClick={handleRetain}
+            disabled={isLodging}
             className="w-full sm:w-auto flex-1 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold py-2.5 px-4 rounded-lg transition-colors shadow-xs flex items-center justify-center gap-2 cursor-pointer"
           >
-            <Scale className="w-3.5 h-3.5" />
-            <span>Retain Advocate for Legal Notice</span>
+            {isLodging ? (
+              <>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Caveat Lodged (90-Day Renewal Active)</span>
+              </>
+            ) : (
+              <>
+                <Scale className="w-3.5 h-3.5" />
+                <span>{isExpiringSoon ? 'Renew Section 148A Caveat (90 Days)' : 'Retain Advocate for Legal Notice'}</span>
+              </>
+            )}
           </button>
 
           <button

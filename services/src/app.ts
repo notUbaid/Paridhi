@@ -20,6 +20,8 @@ export const properties: PropertyRecord[] = JSON.parse(JSON.stringify(mockProper
 
 // Optional WebSocket broadcaster hook (populated in server.ts for standalone daemon)
 let broadcaster: ((data: object) => void) | null = null;
+const sseClients = new Set<Response>();
+
 export function setBroadcaster(fn: (data: object) => void) {
   broadcaster = fn;
 }
@@ -30,6 +32,14 @@ export function broadcast(data: object) {
       broadcaster(data);
     } catch {
       // Ignore broadcast errors in serverless contexts
+    }
+  }
+  const sseData = `data: ${JSON.stringify(data)}\n\n`;
+  for (const client of sseClients) {
+    try {
+      client.write(sseData);
+    } catch {
+      sseClients.delete(client);
     }
   }
 }
@@ -65,10 +75,31 @@ apiRouter.get('/health', (req: Request, res: Response) => {
   res.json({
     status: 'OPTIMAL',
     platform: 'Paridhi Remote Land Protection Core',
-    version: '2.0.0',
+    version: '2.1.0',
     deployment: 'Vercel Serverless Ready',
     activePropertiesCount: properties.length,
     camerasOnline: properties.filter((p) => p.cameraPod.online).length
+  });
+});
+
+// Server-Sent Events (SSE) Real-Time Stream for Serverless & Proxied Environments
+apiRouter.get('/events', (req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+  sseClients.add(res);
+
+  res.write(
+    `data: ${JSON.stringify({
+      type: 'INITIAL_STATE',
+      properties,
+      timestamp: new Date().toISOString()
+    })}\n\n`
+  );
+
+  req.on('close', () => {
+    sseClients.delete(res);
   });
 });
 
@@ -177,8 +208,17 @@ apiRouter.post('/properties/:id/retain-lawyer', (req: Request, res: Response) =>
     return;
   }
 
-  const reason = req.body?.reason || 'Preventive statutory caveat under Section 148A of the Code of Civil Procedure.';
+  const reason = req.body?.reason || 'Preventive statutory caveat renewal under Section 148A of the Code of Civil Procedure.';
+  const now = new Date();
+  const lodgedDateFormatted = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const expiryDate = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+  const expiryFormatted = `${expiryDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} (Section 148A CPC 90-Day Limit)`;
+
   property.legalRetainer.standingCaveatActive = true;
+  property.legalRetainer.caveatLodgedDate = lodgedDateFormatted;
+  property.legalRetainer.caveatExpiryDate = expiryFormatted;
+  property.legalRetainer.daysRemaining = 90;
+  property.legalRetainer.renewalNoticeTriggered = false;
   property.legalRetainer.statutoryNoticeStatus = 'CAVEAT_LODGED';
 
   const newActivity: ActivityEvent = {
@@ -186,7 +226,7 @@ apiRouter.post('/properties/:id/retain-lawyer', (req: Request, res: Response) =>
     timestamp: 'Just now',
     category: 'LEGAL',
     title: `Section 148A CPC Caveat Lodged by ${property.legalRetainer.advocateName}`,
-    description: `Statutory caveat petition served on Tahsildar / Sub-Registrar. No title transfer or boundary amendment can proceed without direct notice to owner. Reason: ${reason}`,
+    description: `Statutory 90-day caveat petition served on Tahsildar & Civil Court. Ex-parte orders legally barred. Valid until ${expiryFormatted}. Reason: ${reason}`,
     severity: 'SUCCESS'
   };
 
@@ -201,9 +241,71 @@ apiRouter.post('/properties/:id/retain-lawyer', (req: Request, res: Response) =>
 
   res.status(201).json({
     success: true,
-    message: 'Statutory caveat successfully lodged with local authorities',
+    message: 'Statutory 90-day caveat successfully lodged with local authorities',
     legalRetainer: property.legalRetainer,
     activity: newActivity
+  });
+});
+
+// Trigger Edge Incident from Python Sentinel Edge Daemon / NPU Computer Vision
+apiRouter.post('/properties/:id/trigger-incident', (req: Request, res: Response) => {
+  const property = properties.find((p) => p.id === req.params.id);
+  if (!property) {
+    res.status(404).json({ error: 'Property not found' });
+    return;
+  }
+
+  const threatType = req.body?.threatType || 'UNSCHEDULED_PERIMETER_ANOMALY';
+  const customDescription = req.body?.customDescription || 'Edge Sentinel NPU flagged an unscheduled perimeter anomaly.';
+
+  property.status = 'ATTENTION_NEEDED';
+  property.statusBadgeText = `Attention Needed • ${threatType.replace(/_/g, ' ')}`;
+  property.cameraPod.timelapseDifferenceDetected = true;
+  property.cameraPod.timelapseNotes = customDescription;
+
+  const incidentPayload = JSON.stringify({
+    propertyId: property.id,
+    surveyNumber: property.surveyNumber,
+    threatType,
+    description: customDescription,
+    timestamp: new Date().toISOString()
+  });
+
+  const sha256 = EvidenceVault.computeSha256(incidentPayload);
+  const signature = EvidenceVault.signWithHsmKey(incidentPayload);
+
+  const newActivity: ActivityEvent = {
+    id: `act-${Date.now()}`,
+    timestamp: 'Just now',
+    category: 'CAMERA',
+    title: `Edge Sentinel Anomaly: ${threatType.replace(/_/g, ' ')}`,
+    description: `${customDescription} [BSA §63 Frame Hash: ${sha256.substring(0, 16)}...]`,
+    severity: 'ALERT'
+  };
+
+  property.recentActivity.unshift(newActivity);
+
+  const incidentRecord = {
+    id: `INC-${Date.now()}`,
+    propertyId: property.id,
+    threatType,
+    sha256Hash: sha256,
+    hardwareSignature: signature,
+    admissibilityNotice: 'Bharatiya Sakshya Adhiniyam, 2023 §63',
+    timestamp: new Date().toISOString()
+  };
+
+  broadcast({
+    type: 'PROPERTY_UPDATED',
+    property,
+    incident: incidentRecord
+  });
+
+  res.status(201).json({
+    success: true,
+    message: 'Edge incident successfully ingested into Evidence Vault',
+    incident: incidentRecord,
+    property
   });
 });
 
