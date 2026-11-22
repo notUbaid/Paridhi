@@ -201,6 +201,30 @@ The web console is designed strictly in **Light Mode Only** using an authoritati
 - **Standing Legal Retainer & Caveat Card:** Details of empanelled High Court advocate, standing Section 148A CPC caveat status, and one-click dossier printing.
 - **Continuous Audit Log:** Immutable chronological event feed capturing daily snapshots, monthly audits, and registry checks.
 
+### Visual Interface Gallery
+
+<div align="center">
+
+#### Remote Land Protection Workstation Overview
+<img src="assets/screenshots/dashboard-light-overview.png" alt="Remote Land Protection Workstation Overview" width="95%" />
+
+#### Weekly Visual Timelapse Comparison (Perimeter Change Delta)
+<img src="assets/screenshots/weekly-timelapse-comparison.png" alt="Weekly Visual Timelapse Comparison" width="95%" />
+
+#### Statutory Section 148A CPC Caveat Petition Lodged with Tahsildar
+<img src="assets/screenshots/section-148a-caveat-modal.png" alt="Statutory Section 148A CPC Caveat Petition" width="95%" />
+
+#### Verified Title & BSA 2023 §63 Evidence Custody Dossier
+<img src="assets/screenshots/bsa2023-evidence-dossier-modal.png" alt="Verified Title & BSA 2023 §63 Evidence Custody Dossier" width="95%" />
+
+#### On-Demand Human Field Audit Dispatch (<48-Hour SLA)
+<img src="assets/screenshots/request-inspection-modal.png" alt="On-Demand Human Field Audit Dispatch" width="95%" />
+
+#### Hybrid Operational & Anti-Theft Architecture Guide
+<img src="assets/screenshots/how-it-works-modal.png" alt="Hybrid Operational & Anti-Theft Architecture Guide" width="95%" />
+
+</div>
+
 ---
 
 ## 6. Unit Economics & Pricing Model

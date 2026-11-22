@@ -1,4 +1,4 @@
-name: Paridhi Sovereign CI
+name: Paridhi CI
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  test-and-verify:
-    name: Automated Cryptographic & Edge Verification Suite
+  verify:
+    name: Build & Test Verification
     runs-on: ubuntu-latest
 
     steps:
@@ -19,7 +19,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
 
       - name: Install dependencies
         run: |
@@ -27,10 +26,10 @@ jobs:
           npm --prefix web install
           npm install
 
-      - name: Run automated test suite (7/7 tests)
+      - name: Run automated test suite (8/8 tests)
         run: npm test
 
-      - name: Build web command center
+      - name: Build web production client
         run: npm run build
 
       - name: Verify build artifact integrity
