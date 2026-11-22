@@ -3,7 +3,10 @@ import type { PropertyRecord, IncidentDetection } from '../types.js';
 import {
   Compass,
   AlertOctagon,
-  Radio
+  Radio,
+  Satellite,
+  Flame,
+  Layers
 } from 'lucide-react';
 
 interface CadastralMapProps {
@@ -67,8 +70,18 @@ export const CadastralMap: React.FC<CadastralMapProps> = ({
             <Compass className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-xs font-semibold text-slate-200">
+            <h3 className="text-xs font-semibold text-slate-200 flex items-center gap-2">
               Cadastral Survey Map • Khasra {property.cadastre.surveyNumber}
+              {mapMode === 'satellite' && (
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  ESA Sentinel-1 C-Band InSAR
+                </span>
+              )}
+              {mapMode === 'thermal' && (
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-orange-500/20 text-orange-300 border border-orange-500/30">
+                  FLIR Radiometric LWIR 160x120
+                </span>
+              )}
             </h3>
             <p className="text-[10px] text-slate-400">
               Village: {property.cadastre.village} | Area: {property.cadastre.areaAcres} Acres | State:{' '}
@@ -82,33 +95,36 @@ export const CadastralMap: React.FC<CadastralMapProps> = ({
           <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800 text-[11px] font-mono">
             <button
               onClick={() => setMapMode('cadastral')}
-              className={`px-2 py-1 rounded-md transition-colors ${
+              className={`flex items-center gap-1 px-2 py-1 rounded-md transition-colors ${
                 mapMode === 'cadastral'
                   ? 'bg-cyan-500/20 text-cyan-300 font-medium'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Cadastral Vector
+              <Layers className="w-3 h-3" />
+              <span>Cadastral Vector</span>
             </button>
             <button
               onClick={() => setMapMode('satellite')}
-              className={`px-2 py-1 rounded-md transition-colors ${
+              className={`flex items-center gap-1 px-2 py-1 rounded-md transition-colors ${
                 mapMode === 'satellite'
-                  ? 'bg-cyan-500/20 text-cyan-300 font-medium'
+                  ? 'bg-purple-500/20 text-purple-300 font-medium'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Orbital SAR
+              <Satellite className="w-3 h-3" />
+              <span>Orbital SAR</span>
             </button>
             <button
               onClick={() => setMapMode('thermal')}
-              className={`px-2 py-1 rounded-md transition-colors ${
+              className={`flex items-center gap-1 px-2 py-1 rounded-md transition-colors ${
                 mapMode === 'thermal'
-                  ? 'bg-cyan-500/20 text-cyan-300 font-medium'
+                  ? 'bg-orange-500/20 text-orange-300 font-medium'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Thermal FLIR
+              <Flame className="w-3 h-3" />
+              <span>Thermal FLIR</span>
             </button>
           </div>
 
@@ -136,14 +152,6 @@ export const CadastralMap: React.FC<CadastralMapProps> = ({
 
       {/* SVG Canvas */}
       <div className="relative w-full h-[360px] bg-[#070b12] hud-grid flex items-center justify-center overflow-hidden">
-        {/* Background mode filter simulation */}
-        {mapMode === 'satellite' && (
-          <div className="absolute inset-0 bg-emerald-950/20 mix-blend-color pointer-events-none" />
-        )}
-        {mapMode === 'thermal' && (
-          <div className="absolute inset-0 bg-gradient-to-tr from-purple-950/30 via-orange-950/20 to-cyan-950/20 pointer-events-none" />
-        )}
-
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="w-full h-full select-none"
@@ -161,6 +169,22 @@ export const CadastralMap: React.FC<CadastralMapProps> = ({
               <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.12" />
               <stop offset="100%" stopColor="#10b981" stopOpacity="0.04" />
             </linearGradient>
+
+            {/* SAR Coherence Gradient */}
+            <radialGradient id="sarCoherenceGlow" cx="65%" cy="35%" r="40%">
+              <stop offset="0%" stopColor="#ec4899" stopOpacity="0.45" />
+              <stop offset="40%" stopColor="#8b5cf6" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.05" />
+            </radialGradient>
+
+            {/* Thermal FLIR Ironbow Heatmap Gradient */}
+            <radialGradient id="flirHotspot" cx="65%" cy="35%" r="30%">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.9" />
+              <stop offset="25%" stopColor="#fbbf24" stopOpacity="0.7" />
+              <stop offset="60%" stopColor="#ef4444" stopOpacity="0.5" />
+              <stop offset="85%" stopColor="#7c3aed" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#1e1b4b" stopOpacity="0.1" />
+            </radialGradient>
 
             {/* Camera FOV Vision Cone */}
             <radialGradient id="fovCone" cx="0%" cy="0%" r="100%">
@@ -240,17 +264,68 @@ export const CadastralMap: React.FC<CadastralMapProps> = ({
           {/* Cadastral Polygon (The Sovereign Land Parcel) */}
           <polygon
             points={polygonPoints}
-            fill="url(#parcelGlow)"
-            stroke="#06b6d4"
+            fill={
+              mapMode === 'satellite'
+                ? 'url(#sarCoherenceGlow)'
+                : mapMode === 'thermal'
+                ? 'url(#flirHotspot)'
+                : 'url(#parcelGlow)'
+            }
+            stroke={mapMode === 'satellite' ? '#a855f7' : mapMode === 'thermal' ? '#f97316' : '#06b6d4'}
             strokeWidth="2.5"
-            strokeDasharray="none"
           />
+
+          {/* SAR Interferometric Fringe Contours in Satellite Mode */}
+          {mapMode === 'satellite' && (
+            <g opacity="0.6">
+              <ellipse cx={sentinelPos.x + 120} cy={sentinelPos.y + 40} rx="70" ry="45" fill="none" stroke="#ec4899" strokeWidth="1.5" strokeDasharray="5 3" />
+              <ellipse cx={sentinelPos.x + 120} cy={sentinelPos.y + 40} rx="45" ry="28" fill="none" stroke="#f43f5e" strokeWidth="2" />
+              <text
+                x={sentinelPos.x + 60}
+                y={sentinelPos.y + 45}
+                fill="#ec4899"
+                fontSize="10"
+                fontFamily="monospace"
+                fontWeight="bold"
+              >
+                InSAR COHERENCE LOSS Δγ = -0.42
+              </text>
+            </g>
+          )}
+
+          {/* Thermal FLIR Hotspot Radiometry in Thermal Mode */}
+          {mapMode === 'thermal' && (
+            <g opacity="0.8">
+              <circle cx={sentinelPos.x + 120} cy={sentinelPos.y + 40} r="25" fill="#f59e0b" fillOpacity="0.4" />
+              <circle cx={sentinelPos.x + 120} cy={sentinelPos.y + 40} r="10" fill="#ffffff" />
+              <text
+                x={sentinelPos.x + 135}
+                y={sentinelPos.y + 35}
+                fill="#fbbf24"
+                fontSize="10"
+                fontFamily="monospace"
+                fontWeight="bold"
+              >
+                ENGINE EXHAUST: 78.4°C
+              </text>
+              <circle cx={sentinelPos.x + 80} cy={sentinelPos.y + 60} r="6" fill="#ef4444" />
+              <text
+                x={sentinelPos.x + 92}
+                y={sentinelPos.y + 64}
+                fill="#ef4444"
+                fontSize="9"
+                fontFamily="monospace"
+              >
+                BODY: 36.8°C
+              </text>
+            </g>
+          )}
 
           {/* Cadastral Boundary Line Glow */}
           <polygon
             points={polygonPoints}
             fill="none"
-            stroke="#06b6d4"
+            stroke={mapMode === 'satellite' ? '#a855f7' : mapMode === 'thermal' ? '#f97316' : '#06b6d4'}
             strokeWidth="6"
             opacity="0.2"
           />

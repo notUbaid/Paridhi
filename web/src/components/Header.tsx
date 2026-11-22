@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Radio, Clock, Scale } from 'lucide-react';
+import { Radio, Clock, Scale, Presentation } from 'lucide-react';
 
 interface HeaderProps {
   activeSentinelsCount: number;
   criticalThreatActive: boolean;
+  onOpenPitchModal: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   activeSentinelsCount,
-  criticalThreatActive
+  criticalThreatActive,
+  onOpenPitchModal
 }) => {
   const [istTime, setIstTime] = useState('');
   const [pstTime, setPstTime] = useState('');
@@ -70,7 +72,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Global Diaspora Clock & Statutory Badges */}
+        {/* Global Diaspora Clock & Actions */}
         <div className="flex items-center flex-wrap gap-3 text-xs">
           {/* Dual Diaspora Time Sync */}
           <div className="flex items-center gap-2 bg-slate-900/80 border border-slate-800 rounded-md px-2.5 py-1 text-slate-300 font-mono">
@@ -91,8 +93,17 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Sentinel Status */}
           <div className="flex items-center gap-1.5 bg-slate-900/80 border border-slate-800 rounded-md px-2.5 py-1 font-mono">
             <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-            <span className="text-slate-400">{activeSentinelsCount} Sentinels Online</span>
+            <span className="text-slate-400">{activeSentinelsCount} Online</span>
           </div>
+
+          {/* Founder Pitch Deck Mode Button */}
+          <button
+            onClick={onOpenPitchModal}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-gradient-to-r from-cyan-600/30 to-emerald-600/30 hover:from-cyan-600/50 hover:to-emerald-600/50 border border-cyan-500/50 text-cyan-300 text-xs font-mono font-semibold shadow-lg shadow-cyan-950/40 transition-colors"
+          >
+            <Presentation className="w-3.5 h-3.5" />
+            <span>Founder Pitch</span>
+          </button>
         </div>
       </div>
     </header>

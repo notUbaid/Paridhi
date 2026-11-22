@@ -9,6 +9,7 @@ import { GroundMarshalCard } from './components/GroundMarshalCard.js';
 import { EvidenceVaultModal } from './components/EvidenceVaultModal.js';
 import { CaveatModal } from './components/CaveatModal.js';
 import { SimulateIncidentModal } from './components/SimulateIncidentModal.js';
+import { FounderPitchModal } from './components/FounderPitchModal.js';
 import { History } from 'lucide-react';
 
 export function App() {
@@ -17,6 +18,7 @@ export function App() {
   const [activeEvidenceIncident, setActiveEvidenceIncident] = useState<IncidentDetection | null>(null);
   const [activeMutationAlert, setActiveMutationAlert] = useState<MutationAlert | null>(null);
   const [isSimulateModalOpen, setIsSimulateModalOpen] = useState(false);
+  const [isPitchModalOpen, setIsPitchModalOpen] = useState(false);
   const [isPollingRegistry, setIsPollingRegistry] = useState(false);
   const [isDispatchingMarshal, setIsDispatchingMarshal] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
@@ -181,6 +183,7 @@ export function App() {
       <Header
         activeSentinelsCount={properties.length}
         criticalThreatActive={criticalThreatActive}
+        onOpenPitchModal={() => setIsPitchModalOpen(true)}
       />
 
       {/* Main Command Center Layout */}
@@ -331,6 +334,12 @@ export function App() {
           property={selectedProperty}
           onClose={() => setIsSimulateModalOpen(false)}
           onIncidentTriggered={refreshProperties}
+        />
+      )}
+
+      {isPitchModalOpen && (
+        <FounderPitchModal
+          onClose={() => setIsPitchModalOpen(false)}
         />
       )}
     </div>

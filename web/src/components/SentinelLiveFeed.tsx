@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import type { PropertyRecord, IncidentDetection } from '../types.js';
 import {
   Sun,
@@ -9,7 +9,8 @@ import {
   Zap,
   FileCheck,
   Camera,
-  AlertTriangle
+  AlertTriangle,
+  VolumeX
 } from 'lucide-react';
 
 interface SentinelLiveFeedProps {
@@ -30,10 +31,100 @@ export const SentinelLiveFeed: React.FC<SentinelLiveFeedProps> = ({
       ? 'Punjabi'
       : 'Kannada'
   );
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   const node = property.sentinelNode;
   const isDeterrenceActive = node.systemStatus === 'DETERRENCE_ACTIVE';
   const latestIncident = property.activeIncidents[0];
+
+  // Synthesize authentic 110dB Siren Alarm Tone using Web Audio API
+  const playSirenTone = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const ctx = new AudioCtx();
+      audioContextRef.current = ctx;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sawtooth';
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+
+      // Alternating 850Hz to 1150Hz police siren oscillation
+      const startTime = ctx.currentTime;
+      for (let i = 0; i < 8; i++) {
+        osc.frequency.setValueAtTime(850, startTime + i * 0.5);
+        osc.frequency.linearRampToValueAtTime(1150, startTime + i * 0.5 + 0.25);
+        osc.frequency.linearRampToValueAtTime(850, startTime + i * 0.5 + 0.5);
+      }
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(startTime + 4);
+
+      setIsPlayingAudio(true);
+      setTimeout(() => {
+        setIsPlayingAudio(false);
+        speakWarning(selectedLanguage);
+      }, 4000);
+    } catch (e) {
+      console.warn('Web Audio API not supported or blocked:', e);
+      speakWarning(selectedLanguage);
+    }
+  };
+
+  // Vernacular Speech Broadcast Synthesizer
+  const speakWarning = (lang: string) => {
+    if (!('speechSynthesis' in window)) return;
+
+    const phrases: Record<string, { text: string; code: string }> = {
+      Telugu: {
+        text: `హెచ్చరిక! సర్వే నంబర్ ${property.cadastre.surveyNumber} పరిధి ఉపగ్రహ నిఘాలో ఉంది. స్థానిక పోలీసులు మరియు భద్రతా బృందానికి సమాచారం అందించబడింది. వెంటనే ఇక్కడి నుంచి వెళ్లిపోండి.`,
+        code: 'te-IN'
+      },
+      Hindi: {
+        text: `चेतावनी! सर्वे नंबर ${property.cadastre.surveyNumber} परिधि सैटेलाइट और एआई निगरानी में है। पुलिस और सुरक्षा बल को सूचित कर दिया गया है। तुरंत यहां से हट जाएं।`,
+        code: 'hi-IN'
+      },
+      Punjabi: {
+        text: `ਚੇਤਾਵਨੀ! ਸਰਵੇ ਨੰਬਰ ${property.cadastre.surveyNumber} ਪਰਿਧੀ ਸੈਟੇਲਾਈਟ ਨਿਗਰਾਨੀ ਹੇਠ ਹੈ। ਪੁਲਿਸ ਨੂੰ ਸੂਚਿਤ ਕਰ ਦਿੱਤਾ ਗਿਆ ਹੈ। ਤੁਰੰਤ ਬਾਹਰ ਨਿਕਲੋ।`,
+        code: 'pa-IN'
+      },
+      Kannada: {
+        text: `ಎಚ್ಚರಿಕೆ! ಸರ್ವೆ ನಂಬರ್ ${property.cadastre.surveyNumber} ಪರಿಧಿ ಉಪಗ್ರಹ ಕಣ್ಗಾವಲಿನಲ್ಲಿದೆ. ಪೊಲೀಸರಿಗೆ ಮಾಹಿತಿ ನೀಡಲಾಗಿದೆ. ತಕ್ಷಣವೇ ಹೊರಡಿ.`,
+        code: 'kn-IN'
+      },
+      English: {
+        text: `Warning! Survey Number ${property.cadastre.surveyNumber} is under 24/7 Paridhi satellite surveillance. Local police and ground patrol have been alerted. Vacate immediately!`,
+        code: 'en-US'
+      }
+    };
+
+    const target = phrases[lang] || phrases.English;
+    const utterance = new SpeechSynthesisUtterance(target.text);
+    utterance.lang = target.code;
+    utterance.rate = 0.95;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handleSoundSiren = () => {
+    onToggleDeterrence(true, selectedLanguage);
+    playSirenTone();
+  };
+
+  const handleDisarmSiren = () => {
+    onToggleDeterrence(false, selectedLanguage);
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsPlayingAudio(false);
+  };
 
   return (
     <div className="bg-[#0b1019] border border-slate-800 rounded-2xl overflow-hidden shadow-xl flex flex-col">
@@ -190,8 +281,7 @@ export const SentinelLiveFeed: React.FC<SentinelLiveFeedProps> = ({
               <option value="Punjabi">Punjabi (ਪੰਜਾਬੀ)</option>
               <option value="Kannada">Kannada (ಕನ್ನಡ)</option>
               <option value="Hindi">Hindi (हिंदी)</option>
-              <option value="Tamil">Tamil (தமிழ்)</option>
-              <option value="Marathi">Marathi (मराठी)</option>
+              <option value="English">English</option>
             </select>
           </div>
 
@@ -200,7 +290,7 @@ export const SentinelLiveFeed: React.FC<SentinelLiveFeedProps> = ({
             {isDeterrenceActive ? (
               <span className="text-red-400 font-bold animate-pulse flex items-center gap-1">
                 <AlertTriangle className="w-3.5 h-3.5" />
-                110dB SIREN ACTIVE
+                110dB SIREN BROADCASTING
               </span>
             ) : (
               <span className="text-slate-400">Deterrence Standby</span>
@@ -212,18 +302,21 @@ export const SentinelLiveFeed: React.FC<SentinelLiveFeedProps> = ({
         <div className="flex items-center gap-2 w-full md:w-auto justify-end">
           {isDeterrenceActive ? (
             <button
-              onClick={() => onToggleDeterrence(false, selectedLanguage)}
-              className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono font-medium transition-colors"
+              onClick={handleDisarmSiren}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono font-medium transition-colors"
             >
-              Disarm Siren & Strobes
+              <VolumeX className="w-3.5 h-3.5 text-red-400" />
+              <span>Disarm Siren & Strobes</span>
             </button>
           ) : (
             <button
-              onClick={() => onToggleDeterrence(true, selectedLanguage)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-mono font-semibold shadow-lg shadow-red-900/40 transition-colors"
+              onClick={handleSoundSiren}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-white text-xs font-mono font-semibold shadow-lg shadow-red-900/40 transition-colors ${
+                isPlayingAudio ? 'bg-red-700 animate-pulse' : 'bg-red-600 hover:bg-red-500'
+              }`}
             >
               <Zap className="w-3.5 h-3.5" />
-              Sound 110dB Siren & Voice
+              <span>{isPlayingAudio ? 'Broadcasting Siren & Audio...' : 'Sound 110dB Siren & Voice'}</span>
             </button>
           )}
 
@@ -233,7 +326,7 @@ export const SentinelLiveFeed: React.FC<SentinelLiveFeedProps> = ({
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 text-xs font-mono font-medium transition-colors"
             >
               <FileCheck className="w-3.5 h-3.5" />
-              BSA 2023 Vault
+              <span>BSA 2023 Vault</span>
             </button>
           )}
         </div>
