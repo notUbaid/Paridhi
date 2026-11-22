@@ -31,32 +31,32 @@ export const InspectionPhotoModal: React.FC<InspectionPhotoModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 bg-slate-950/80 flex items-center justify-center p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="photo-modal-title"
     >
       <div
-        className="bg-white rounded-xl border border-slate-200 shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150"
+        className="bg-white rounded-lg border border-slate-200/90 shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50/80">
+        <div className="px-5 py-3 border-b border-slate-200/80 flex items-center justify-between bg-slate-50/60">
           <div className="flex items-center gap-2.5">
-            <Compass className="w-4 h-4 text-slate-700" />
-            <h3 id="photo-modal-title" className="font-bold text-slate-900 text-sm">
-              {photo.cornerPeg} • {surveyNumber}
+            <Compass className="w-4 h-4 text-slate-700 shrink-0" />
+            <h3 id="photo-modal-title" className="font-bold text-slate-900 text-sm tracking-tight">
+              {photo.cornerPeg} · {surveyNumber}
             </h3>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1 font-semibold">
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200/80 flex items-center gap-1 font-medium">
               <ShieldCheck className="w-3 h-3 text-emerald-600" />
-              Geotagged & Tamper-Evident
+              <span>Geotagged & Sealed</span>
             </span>
           </div>
 
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+            className="text-slate-400 hover:text-slate-600 p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
             aria-label="Close photo preview"
           >
             <X className="w-4 h-4" />

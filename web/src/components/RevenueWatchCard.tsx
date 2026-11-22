@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import type { RevenueRegistryWatch } from '../types';
 import {
   Landmark,
-  ShieldCheck,
   RefreshCw,
   CheckCircle2,
   Clock,
@@ -37,17 +36,17 @@ export const RevenueWatchCard: React.FC<RevenueWatchCardProps> = ({ registry, on
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs flex flex-col">
+    <div className="bg-white rounded-lg border border-slate-200/90 overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col">
       {/* Header */}
-      <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between gap-3">
+      <div className="px-5 py-3 border-b border-slate-200/80 bg-slate-50/60 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Landmark className="w-4 h-4 text-slate-700" />
-          <span className="font-semibold text-slate-900 text-sm">
-            State Land Revenue Registry Watch
+          <Landmark className="w-4 h-4 text-slate-700 shrink-0" />
+          <span className="font-semibold text-slate-900 text-sm tracking-tight">
+            Revenue Registry Watch
           </span>
-          <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-            <ShieldCheck className="w-3 h-3 text-emerald-600" />
-            Title Clean
+          <span className="text-[11px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/80 inline-flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span>Title Clean</span>
           </span>
         </div>
 
@@ -56,20 +55,20 @@ export const RevenueWatchCard: React.FC<RevenueWatchCardProps> = ({ registry, on
             href={getPortalUrl()}
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 hover:text-slate-900 transition-colors px-2 py-1 rounded-md border border-slate-200 hover:bg-slate-100"
+            className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 hover:text-slate-900 transition-colors px-2 py-1 rounded border border-slate-200 hover:bg-slate-50"
             title="Open official state government land portal"
           >
-            <span>Gov Portal</span>
+            <span>State Portal</span>
             <ExternalLink className="w-3 h-3 text-slate-400" />
           </a>
 
           <button
             onClick={handleVerify}
             disabled={isVerifying}
-            className="flex items-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-medium px-2.5 py-1 rounded transition-colors cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isVerifying ? 'animate-spin' : ''}`} />
-            <span>{isVerifying ? 'Querying State Records...' : 'Poll State Registry'}</span>
+            <span>{isVerifying ? 'Querying...' : 'Poll Registry'}</span>
           </button>
         </div>
       </div>
@@ -78,72 +77,57 @@ export const RevenueWatchCard: React.FC<RevenueWatchCardProps> = ({ registry, on
       <div className="p-5 flex-1 flex flex-col justify-between">
         <div>
           {/* Government Portal Badge */}
-          <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-100">
+          <div className="flex items-start justify-between gap-4 pb-3.5 border-b border-slate-100">
             <div>
-              <div className="text-xs text-slate-400 uppercase font-semibold">Government Land Portal</div>
-              <div className="text-base font-bold text-slate-900 mt-0.5">
+              <div className="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Official State Registry</div>
+              <div className="text-sm font-bold text-slate-900 mt-0.5">
                 {registry.portalName}
               </div>
-              <div className="text-xs text-slate-500 mt-1 flex items-center gap-2">
-                <Clock className="w-3.5 h-3.5 text-slate-400" />
-                <span>Last automated audit: {registry.lastCheckedTimestamp}</span>
+              <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5 font-mono">
+                <Clock className="w-3 h-3 text-slate-400" />
+                <span>Checked: {registry.lastCheckedTimestamp}</span>
               </div>
             </div>
 
             <div className="text-right">
-              <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 border border-slate-200">
-                {registry.khataNumber}
+              <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-800 border border-slate-200">
+                Khata #{registry.khataNumber}
               </span>
-              <div className="text-[11px] text-slate-400 mt-1">
+              <div className="text-[10px] text-slate-400 font-mono mt-1">
                 Survey #{registry.surveyNumber}
               </div>
             </div>
           </div>
 
-          {/* Key Title Records Grid */}
-          <div className="py-4 space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-              <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
-                <div className="text-[10px] uppercase font-semibold text-slate-400">Registered Pattadar (Owner)</div>
-                <div className="text-slate-900 font-semibold mt-0.5">{registry.pattadarName}</div>
-                <div className="text-[11px] text-emerald-700 mt-0.5 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                  <span>Aadhaar KYC & Bank Linked</span>
-                </div>
-              </div>
+          {/* Key Title Records Ledger (Clean Structured Rows, No Nested Box Cards) */}
+          <div className="py-3 space-y-2.5 text-xs">
+            <div className="flex items-baseline justify-between py-1 border-b border-slate-50">
+              <span className="text-slate-500 font-medium">Recorded Pattadar:</span>
+              <span className="font-semibold text-slate-900">{registry.pattadarName} <span className="text-emerald-700 font-normal text-[11px]">(Aadhaar Linked)</span></span>
+            </div>
 
-              <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
-                <div className="text-[10px] uppercase font-semibold text-slate-400">Passbook & Title Status</div>
-                <div className="text-slate-900 font-semibold mt-0.5">{registry.passbookStatus}</div>
-                <div className="text-[11px] text-emerald-700 mt-0.5 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                  <span>No court stay or injunctions</span>
-                </div>
-              </div>
+            <div className="flex items-baseline justify-between py-1 border-b border-slate-50">
+              <span className="text-slate-500 font-medium">Title & Mutation Status:</span>
+              <span className="font-semibold text-emerald-700">{registry.passbookStatus}</span>
+            </div>
 
-              <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
-                <div className="text-[10px] uppercase font-semibold text-slate-400">Encumbrance Certificate (EC)</div>
-                <div className="text-slate-900 font-semibold mt-0.5">{registry.encumbranceCertificateStatus}</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">Form 15 issued with nil liabilities</div>
-              </div>
+            <div className="flex items-baseline justify-between py-1 border-b border-slate-50">
+              <span className="text-slate-500 font-medium">Encumbrance Certificate (EC):</span>
+              <span className="font-semibold text-slate-900 font-mono">{registry.encumbranceCertificateStatus} <span className="text-slate-400 font-normal">(Nil Liability)</span></span>
+            </div>
 
-              <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
-                <div className="text-[10px] uppercase font-semibold text-slate-400">Municipal / Gram Panchayat Tax</div>
-                <div className="text-slate-900 font-semibold mt-0.5">{registry.propertyTaxStatus}</div>
-                <div className="text-[11px] text-emerald-700 mt-0.5 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                  <span>Zero arrears or penalty dues</span>
-                </div>
-              </div>
+            <div className="flex items-baseline justify-between py-1 border-b border-slate-50">
+              <span className="text-slate-500 font-medium">Local Property Tax:</span>
+              <span className="font-semibold text-slate-900">{registry.propertyTaxStatus} <span className="text-emerald-700 font-normal text-[11px]">(Nil Arrears)</span></span>
             </div>
           </div>
         </div>
 
-        {/* Protection Guarantee Banner */}
-        <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-lg p-3 text-xs text-emerald-900 flex items-start gap-2.5">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-          <div className="leading-relaxed">
-            <span className="font-semibold">Zero Adverse Mutation Applications Detected.</span> Paridhi continuously polls state revenue databases daily. If any fraudulent patta transfer or duplicate survey application is filed with the Tahsildar, you and your partner advocate will be notified within 24 hours to file statutory objections.
+        {/* Protection Guarantee Strip */}
+        <div className="bg-emerald-50/60 border border-emerald-200/70 rounded p-2.5 text-xs text-emerald-900 flex items-start gap-2">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+          <div className="leading-relaxed text-[11px]">
+            <span className="font-semibold">Sub-Registrar Office (SRO) Lock:</span> Automated Dharani/Bhoomi webhooks trigger instant SMS and email notifications upon any mutation application.
           </div>
         </div>
       </div>

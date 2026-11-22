@@ -42,26 +42,26 @@ export const RequestInspectionModal: React.FC<RequestInspectionModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 bg-slate-950/60 flex items-center justify-center p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="request-inspection-title"
     >
       <div
-        className="bg-white rounded-xl border border-slate-200 shadow-xl max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-150"
+        className="bg-white rounded-lg border border-slate-200/90 shadow-2xl max-w-lg w-full overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+        <div className="px-5 py-3.5 border-b border-slate-200/80 flex items-center justify-between bg-slate-50/60">
           <div className="flex items-center gap-2">
-            <UserCheck className="w-4 h-4 text-slate-700" />
-            <h3 id="request-inspection-title" className="font-bold text-slate-900 text-sm">
-              Request On-Demand Field Inspection
+            <UserCheck className="w-4 h-4 text-slate-700 shrink-0" />
+            <h3 id="request-inspection-title" className="font-bold text-slate-900 text-sm tracking-tight">
+              Dispatch On-Demand Physical Inspection
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+            className="text-slate-400 hover:text-slate-600 p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
             aria-label="Close dialog"
           >
             <X className="w-4 h-4" />

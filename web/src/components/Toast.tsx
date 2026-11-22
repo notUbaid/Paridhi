@@ -38,35 +38,35 @@ export const Toast: React.FC<ToastProps> = ({ toast, onClose }) => {
   const getBadgeStyle = () => {
     switch (toast.type) {
       case 'SUCCESS':
-        return 'border-emerald-200 bg-emerald-50/90 text-emerald-900';
+        return 'border-emerald-300 bg-white text-slate-900';
       case 'ALERT':
-        return 'border-amber-200 bg-amber-50/90 text-amber-900';
+        return 'border-amber-300 bg-white text-slate-900';
       default:
-        return 'border-blue-200 bg-blue-50/90 text-blue-900';
+        return 'border-slate-300 bg-white text-slate-900';
     }
   };
 
   return (
     <aside
       aria-label="Notification"
-      className="fixed bottom-6 right-6 z-50 max-w-sm w-full animate-in fade-in slide-in-from-bottom-4 duration-200"
+      className="fixed bottom-6 right-6 z-50 max-w-sm w-full"
     >
-      <div className={`p-4 rounded-xl border shadow-lg backdrop-blur-md ${getBadgeStyle()}`}>
+      <div className={`p-3.5 rounded-lg border shadow-xl ${getBadgeStyle()}`}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-2.5">
             {getIcon()}
             <div>
-              <div className="text-xs font-bold leading-none mb-1">
+              <div className="text-xs font-bold leading-none mb-1 text-slate-900">
                 {toast.title}
               </div>
-              <div className="text-[11px] opacity-90 leading-relaxed font-sans">
+              <div className="text-[11px] text-slate-600 leading-relaxed">
                 {toast.message}
               </div>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="opacity-60 hover:opacity-100 p-0.5 rounded transition-opacity cursor-pointer"
+            className="text-slate-400 hover:text-slate-700 p-0.5 rounded transition-colors cursor-pointer"
             aria-label="Dismiss notification"
           >
             <X className="w-3.5 h-3.5" />

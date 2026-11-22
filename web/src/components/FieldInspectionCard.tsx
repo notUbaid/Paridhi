@@ -4,11 +4,7 @@ import { InspectionPhotoModal } from './InspectionPhotoModal';
 import {
   UserCheck,
   CheckCircle2,
-  Calendar,
-  Phone,
-  Camera,
-  MapPin,
-  ShieldCheck
+  Camera
 } from 'lucide-react';
 
 interface FieldInspectionCardProps {
@@ -41,129 +37,107 @@ export const FieldInspectionCard: React.FC<FieldInspectionCardProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs flex flex-col">
+    <div className="bg-white rounded-lg border border-slate-200/90 overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col">
       {/* Header */}
-      <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between gap-3">
+      <div className="px-5 py-3 border-b border-slate-200/80 bg-slate-50/60 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <UserCheck className="w-4 h-4 text-slate-700" />
-          <span className="font-semibold text-slate-900 text-sm">
-            Verified Physical Field Inspections
+          <UserCheck className="w-4 h-4 text-slate-700 shrink-0" />
+          <span className="font-semibold text-slate-900 text-sm tracking-tight">
+            Physical Ground Verification
           </span>
-          <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
-            <ShieldCheck className="w-3 h-3 text-blue-600" />
-            Monthly Human Audit
+          <span className="text-[11px] font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+            Monthly In-Person Audit
           </span>
         </div>
 
         <button
           onClick={onRequestVisit}
-          className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors shadow-xs cursor-pointer"
+          className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium px-2.5 py-1 rounded transition-colors cursor-pointer"
         >
-          Request On-Demand Visit
+          Dispatch Inspection
         </button>
       </div>
 
       {/* Main Content Area */}
       <div className="p-5 flex-1 flex flex-col justify-between">
         {/* Inspector Identity & Date */}
-        <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-100">
+        <div className="flex items-start justify-between gap-4 pb-3.5 border-b border-slate-100">
           <div>
-            <div className="text-xs text-slate-400 uppercase font-semibold">Assigned Field Inspector</div>
-            <div className="text-base font-bold text-slate-900 mt-0.5 flex items-center gap-2">
+            <div className="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Assigned Field Auditor</div>
+            <div className="text-sm font-bold text-slate-900 mt-0.5 flex items-center gap-2">
               <span>{inspection.inspectorName}</span>
-              <span className="text-[10px] font-mono font-normal px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+              <span className="text-[10px] font-mono font-normal px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200">
                 {inspection.inspectorId}
               </span>
             </div>
-            <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
-              <span className="flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                <span>Audited: {inspection.inspectionDate}</span>
-              </span>
-              <span>•</span>
-              <span className="flex items-center gap-1">
-                <Phone className="w-3.5 h-3.5 text-slate-400" />
-                <span>{inspection.inspectorPhone}</span>
-              </span>
+            <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
+              <span>Audited: {inspection.inspectionDate}</span>
+              <span className="text-slate-300">·</span>
+              <span className="font-mono text-slate-600">{inspection.inspectorPhone}</span>
             </div>
           </div>
 
           <div className="text-right">
-            <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              Verified In-Person
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/80">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>Ground Verified</span>
             </span>
-            <div className="text-[11px] text-slate-400 mt-1">
-              Next scheduled: {inspection.nextScheduledDate}
+            <div className="text-[10px] text-slate-400 font-mono mt-1">
+              Next: {inspection.nextScheduledDate}
             </div>
           </div>
         </div>
 
-        {/* 4-Point Ground Verification Checklist */}
-        <div className="py-4 space-y-2.5">
-          <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-            In-Person Verification Checklist
+        {/* 4-Point Ground Verification Ledger (Clean, No Nested Cards) */}
+        <div className="py-3 space-y-2">
+          <div className="text-[11px] font-semibold text-slate-800 tracking-tight">
+            Physical Inspection Protocol
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-xs">
-            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600">
+            <div className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0"></span>
               <div>
-                <span className="font-semibold text-slate-800">Corner Boundary Stones:</span>{' '}
-                <span className="text-slate-600">
-                  All 4 corner boundary pillars verified intact, upright, and visibly painted.
-                </span>
+                <strong className="text-slate-800 font-medium">Boundary Stones:</strong> 4 corner pillars upright, unshifted, freshly painted.
               </div>
             </div>
 
-            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0"></span>
               <div>
-                <span className="font-semibold text-slate-800">Zero Encroachment / Dumping:</span>{' '}
-                <span className="text-slate-600">
-                  Confirmed no bricks, sand, construction debris, or unauthorized structures.
-                </span>
+                <strong className="text-slate-800 font-medium">Encroachment Check:</strong> Zero debris, bricks, or unauthorized materials.
               </div>
             </div>
 
-            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0"></span>
               <div>
-                <span className="font-semibold text-slate-800">Neighbor Inquiry Conducted:</span>{' '}
-                <span className="text-slate-600">
-                  {inspection.neighborFeedbackSummary}
-                </span>
+                <strong className="text-slate-800 font-medium">Neighbor Inquiry:</strong> {inspection.neighborFeedbackSummary}
               </div>
             </div>
 
-            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0"></span>
               <div>
-                <span className="font-semibold text-slate-800">Geotagged Photo Archive:</span>{' '}
-                <span className="text-slate-600">
-                  High-res 360° ground photos archived with GPS coordinate & time stamp.
-                </span>
+                <strong className="text-slate-800 font-medium">NavIC Verification:</strong> GNSS atomic time lock within 50m cadastral peg geofence.
               </div>
             </div>
           </div>
         </div>
 
         {/* Inspector's Field Log Summary */}
-        <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 text-xs text-slate-700 mb-4">
-          <div className="font-semibold text-slate-900 mb-1 flex items-center gap-1.5">
-            <MapPin className="w-3.5 h-3.5 text-slate-500" />
-            <span>Inspector Field Log Notes</span>
-          </div>
-          <p className="text-slate-600 leading-relaxed italic">
+        <div className="rounded p-2.5 bg-slate-50 border border-slate-200/80 text-xs text-slate-700 mb-3.5">
+          <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wide mb-0.5">Auditor Contemporaneous Record</div>
+          <p className="text-slate-600 leading-relaxed italic text-[11px]">
             "{inspection.summaryNotes}"
           </p>
         </div>
 
         {/* Geotagged Photo Thumbnails */}
         <div>
-          <div className="text-[11px] font-semibold text-slate-500 uppercase mb-2 flex items-center justify-between">
-            <span>Archived Ground Evidence Photos</span>
-            <span className="font-normal lowercase text-slate-400">Click photo to inspect geotagged proof</span>
+          <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+            <span>Ground Truth Photos (Click to Enlarge)</span>
+            <span className="text-slate-500">BSA 2023 §63 Compliant</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
             {inspection.geotaggedPhotoUrls.map((url, idx) => (
@@ -171,22 +145,22 @@ export const FieldInspectionCard: React.FC<FieldInspectionCardProps> = ({
                 key={idx}
                 type="button"
                 onClick={() => handleOpenPhoto(idx)}
-                className="relative rounded-lg overflow-hidden border border-slate-200 h-24 bg-slate-100 group cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-slate-900/20"
+                className="relative rounded overflow-hidden border border-slate-200/90 h-24 bg-slate-100 group cursor-pointer text-left focus:outline-none focus:ring-1 focus:ring-slate-900"
                 aria-label={`Inspect high-resolution evidence photo ${idx + 1}`}
               >
                 <img
                   src={url}
                   alt={`Field Inspection Photo ${idx + 1}`}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                  className="w-full h-full object-cover group-hover:scale-102 transition-transform"
                 />
-                <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-medium gap-1.5 backdrop-blur-[1px]">
+                <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-medium gap-1.5">
                   <Camera className="w-3.5 h-3.5" />
-                  <span>Inspect Evidence</span>
+                  <span>View Proof</span>
                 </div>
-                <div className="absolute bottom-1 left-1.5 bg-slate-900/80 text-white text-[9px] font-mono px-1.5 py-0.5 rounded">
+                <div className="absolute bottom-1 left-1.5 bg-slate-950/85 text-white text-[9px] font-mono px-1.5 py-0.5 rounded">
                   {inspection.photoDetails && inspection.photoDetails[idx]
                     ? inspection.photoDetails[idx].cornerPeg
-                    : `Peg #${idx + 1} • ${idx === 0 ? 'NE Corner' : 'SW Corner'}`}
+                    : `Station P${idx + 1}`}
                 </div>
               </button>
             ))}
