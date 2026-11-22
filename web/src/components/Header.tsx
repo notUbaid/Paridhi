@@ -8,6 +8,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
+  activeSentinelsCount,
   criticalThreatActive,
   onOpenPitchModal
 }) => {
@@ -59,7 +60,7 @@ export const Header: React.FC<HeaderProps> = ({
                 / परिधि
               </span>
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-medium border border-slate-200">
-                Cadastral Defense Workstation
+                Cadastral Defense Workstation • {activeSentinelsCount} Nodes Active
               </span>
             </div>
             <div className="text-[11px] text-slate-500 tracking-normal">

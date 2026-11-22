@@ -80,18 +80,18 @@ Using 4 registered boundary pegs $\{P_1, P_2, P_3, P_4\}$, $\mathbf{H}$ is solve
 
 The Sentinel is engineered for Indian monsoon conditions with zero sunlight for up to 30 continuous days:
 
-$$\text{Daily Energy Consumption} = (P_{\text{idle}} \times 22.8\text{h}) + (P_{\text{active}} \times 1.2\text{h}) = (1.8\text{W} \times 22.8) + (5.8\text{W} \times 1.2) = 48.0\text{ Wh/day}$$
+$$\text{Daily Energy Consumption} = (P_{\mathrm{idle}} \times 22.8\,\mathrm{h}) + (P_{\mathrm{active}} \times 1.2\,\mathrm{h}) = (1.8\,\mathrm{W} \times 22.8) + (5.8\,\mathrm{W} \times 1.2) = 48.0\,\mathrm{Wh/day}$$
 
-$$\text{Battery Autonomy} = \frac{12.8\text{V} \times 24\text{Ah} \times 0.90 \text{ DoD} \times 0.95 \text{ BMS Eff}}{48.0\text{ Wh/day}} = \frac{262.6\text{ Wh}}{48.0\text{ Wh/day}} \approx \mathbf{5.47 \text{ Days Continuous 24/7 Run}}$$
+$$\text{Battery Autonomy} = \frac{12.8\,\mathrm{V} \times 24\,\mathrm{Ah} \times 0.90 \times 0.95}{48.0\,\mathrm{Wh/day}} = \frac{262.6\,\mathrm{Wh}}{48.0\,\mathrm{Wh/day}} \approx \mathbf{5.47\text{ Days Continuous 24/7 Run}}$$
 
 With adaptive duty-cycling (radar sleep mode until 24GHz Doppler tripwire triggers high-power NPU), **autonomy extends beyond 32 days** without sunlight.
 
 ### 3.3 Cryptographic Chain of Custody (BSA 2023 §63)
 
 For every detected encroachment frame $F_t$:
-1. **Contemporaneous Hash:** $H_t = \text{SHA-256}(F_t \parallel \text{Tele}_t)$ computed on ATECC608A HSM before memory flush.
-2. **Asymmetric Signature:** $\sigma_t = \text{Ed25519\_Sign}(SK_{\text{node}}, H_t \parallel \text{NavIC\_Time}_t)$.
-3. **Merkle DAG Leaf:** $L_t = \text{SHA-256}(H_t \parallel \sigma_t)$.
+1. **Contemporaneous Hash:** $H_t = \operatorname{SHA-256}(F_t \parallel \mathrm{Tele}_t)$ computed on ATECC608A HSM before memory flush.
+2. **Asymmetric Signature:** $\sigma_t = \operatorname{Ed25519-Sign}(SK_{\mathrm{node}},\, H_t \parallel t_{\mathrm{NavIC}})$.
+3. **Merkle DAG Leaf:** $L_t = \operatorname{SHA-256}(H_t \parallel \sigma_t)$.
 4. **RFC 3161 Anchor:** Merkle Root $R_k$ anchored every 15 minutes to an external Qualified Trust Service Provider (QTA).
 
 ---

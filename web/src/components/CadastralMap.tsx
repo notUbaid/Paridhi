@@ -33,11 +33,15 @@ export const CadastralMap: React.FC<CadastralMapProps> = ({
   const width = 640;
   const height = 370;
 
-  const project = (lat: number, lon: number) => {
+  const project = (lat: number, lon: number, clamp = false) => {
     const latSpan = maxLat - minLat || 0.001;
     const lonSpan = maxLon - minLon || 0.001;
-    const x = padding + ((lon - minLon) / lonSpan) * (width - 2 * padding);
-    const y = height - padding - ((lat - minLat) / latSpan) * (height - 2 * padding);
+    let x = padding + ((lon - minLon) / lonSpan) * (width - 2 * padding);
+    let y = height - padding - ((lat - minLat) / latSpan) * (height - 2 * padding);
+    if (clamp) {
+      x = Math.max(30, Math.min(width - 30, x));
+      y = Math.max(30, Math.min(height - 30, y));
+    }
     return { x, y };
   };
 
@@ -51,7 +55,8 @@ export const CadastralMap: React.FC<CadastralMapProps> = ({
   const sentinelPos = project(coords[0].latitude, coords[0].longitude);
   const marshalPos = project(
     property.groundResponseTeam.currentLocation.latitude,
-    property.groundResponseTeam.currentLocation.longitude
+    property.groundResponseTeam.currentLocation.longitude,
+    true
   );
 
   return (
@@ -266,7 +271,7 @@ export const CadastralMap: React.FC<CadastralMapProps> = ({
 
           {/* Active Incidents / Breach Markers */}
           {property.activeIncidents.map((incident) => {
-            const incPos = project(incident.coordinates.latitude, incident.coordinates.longitude);
+            const incPos = project(incident.coordinates.latitude, incident.coordinates.longitude, true);
             return (
               <g
                 key={incident.id}

@@ -74,11 +74,11 @@ Each Paridhi Sentinel Node embeds an **ATECC608A / OPTIGA Trust M** cryptographi
 
 ### 3.3 Evidentiary Pipeline Formulation
 For any video snippet $V$ recorded during a detected perimeter anomaly event $E$ at timestamp $t$:
-$$H_{frame} = \text{SHA-256}(\text{FrameData} \parallel \text{GNSS}_{\text{Lat,Lon}} \parallel t_{\text{NavIC}} \parallel \text{Tilt}_{\text{Gyro}})$$
-$$\Sigma_{event} = \text{Ed25519-Sign}(SK_{device}, H_{frame} \parallel \text{EventID} \parallel \text{NodeID})$$
+$$H_{\mathrm{frame}} = \operatorname{SHA-256}(\operatorname{FrameData} \parallel \operatorname{GNSS}_{\mathrm{Lat,Lon}} \parallel t_{\mathrm{NavIC}} \parallel \operatorname{Tilt}_{\mathrm{Gyro}})$$
+$$\Sigma_{\mathrm{event}} = \operatorname{Ed25519-Sign}(SK_{\mathrm{device}}, H_{\mathrm{frame}} \parallel \operatorname{EventID} \parallel \operatorname{NodeID})$$
 
 The cloud engine aggregates these hashes into a Merkle Directed Acyclic Graph (DAG):
-$$\text{MerkleRoot}_T = \mathcal{M}(H_1, H_2, \dots, H_n)$$
+$$\operatorname{MerkleRoot}_T = \mathcal{M}(H_1, H_2, \dots, H_n)$$
 
 This root is anchored with an RFC 3161 Qualified Timestamp Authority (QTA) and published to an append-only transparency ledger.
 

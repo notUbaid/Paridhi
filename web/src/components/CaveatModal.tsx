@@ -27,13 +27,44 @@ export const CaveatModal: React.FC<CaveatModalProps> = ({
 
   useEffect(() => {
     fetch(`/api/properties/${property.id}/caveat/${mutation.id}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
+        return res.json();
+      })
       .then((data) => {
         if (data.caveatPetitionMarkdown) {
           setCaveatText(data.caveatPetitionMarkdown);
         }
       })
-      .catch((err) => console.error('Failed to load caveat petition:', err));
+      .catch((err) => {
+        console.warn('Network API unreachable, generating client-side caveat petition:', err);
+        const fallbackText = `BEFORE THE HON'BLE COURT OF THE TAHSILDAR / EXECUTIVE MAGISTRATE
+MANDAL / TALUK: ${property.cadastre.mandalTaluk.toUpperCase()}
+DISTRICT: ${property.cadastre.district.toUpperCase()}, ${property.cadastre.state.toUpperCase()}
+
+CAVEAT PETITION UNDER SECTION 148A OF THE CODE OF CIVIL PROCEDURE, 1908
+READ WITH SECTION 5 OF THE STATE LAND RIGHTS AND PATTADAR PASSBOOK ACT
+
+IN THE MATTER OF:
+${property.ownerName.toUpperCase()}
+Presently residing at: ${property.ownerOverseasCity}
+Represented by Paridhi Legal Cadastral Escrow Network
+... CAVEATOR / TRUE RECORD TITLE OWNER
+
+VERSUS
+
+${mutation.applicantName.toUpperCase()}
+... CAVEATEE / ADVERSE CLAIMANT
+
+---
+
+1. The Caveator is the absolute, lawful, and verified titleholder in physical and constructive possession of land bearing Survey No. ${property.cadastre.surveyNumber} (${property.cadastre.khasraKhata}) situated at ${property.cadastre.village}, measuring ${property.cadastre.areaAcres} Acres.
+
+2. The Caveatee has maliciously and without any legal authority or right filed Application No. ${mutation.applicationId} claiming ${mutation.claimedType}.
+
+3. PRAYER: It is respectfully prayed that this Hon'ble Authority may be pleased to issue NO ex-parte order, mutation sanction, or passbook issuance without issuing advance registered notice to the Caveator and granting a full hearing.`;
+        setCaveatText(fallbackText);
+      });
   }, [property, mutation]);
 
   const handleCopy = () => {

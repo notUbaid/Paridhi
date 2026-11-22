@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { PropertyRecord, IncidentDetection } from '../types.js';
 import {
   Sun,
@@ -29,8 +29,22 @@ export const SentinelLiveFeed: React.FC<SentinelLiveFeedProps> = ({
       ? 'Telugu'
       : property.cadastre.state === 'Punjab'
       ? 'Punjabi'
-      : 'Kannada'
+      : property.cadastre.state === 'Karnataka'
+      ? 'Kannada'
+      : 'Hindi'
   );
+
+  useEffect(() => {
+    setSelectedLanguage(
+      property.cadastre.state === 'Telangana'
+        ? 'Telugu'
+        : property.cadastre.state === 'Punjab'
+        ? 'Punjabi'
+        : property.cadastre.state === 'Karnataka'
+        ? 'Kannada'
+        : 'Hindi'
+    );
+  }, [property.cadastre.state]);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
 

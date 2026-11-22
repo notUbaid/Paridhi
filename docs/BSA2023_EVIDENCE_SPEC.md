@@ -71,8 +71,8 @@ The Paridhi Cryptographic Custody Protocol ensures that every frame, telemetry s
 
 ### 3.1 Per-Frame Atomic Hash
 For each video frame $f_i$ captured at atomic index $i \in \{1, \dots, N\}$:
-$$\mathcal{T}_i = \{\text{lat}: \phi, \text{lon}: \lambda, \text{alt}: h, \text{time\_navic}: t_{\text{atomic}}, \text{pitch}: \theta, \text{roll}: \psi, \text{yaw}: \omega\}$$
-$$h_i = \mathcal{H}_{\text{SHA-256}}(f_i \parallel \mathcal{T}_i)$$
+$$\mathcal{T}_i = \{\operatorname{lat}: \phi, \operatorname{lon}: \lambda, \operatorname{alt}: h, \operatorname{time}: t_{\mathrm{atomic}}, \operatorname{pitch}: \theta, \operatorname{roll}: \psi, \operatorname{yaw}: \omega\}$$
+$$h_i = \mathcal{H}_{\mathrm{SHA-256}}(f_i \parallel \mathcal{T}_i)$$
 
 ### 3.2 Evidentiary Video Segment
 A contiguous 10-second evidentiary clip $\mathcal{C}$ consisting of $N = 300$ frames (at 30 FPS) is hashed into an aggregated segment identifier:
