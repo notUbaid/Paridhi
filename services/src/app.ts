@@ -5,9 +5,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { mockProperties } from './db.js';
 import { EvidenceVault } from './crypto/evidenceVault.js';
-import { SentinelSimulator } from './edge/sentinelSimulator.js';
-import { RegistryRadarService } from './radar/registryRadar.js';
-import { GroundMarshalService } from './marshal/groundMarshal.js';
+import { PropertyRecord, ActivityEvent, FieldInspectionReport } from './types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,7 +16,7 @@ app.use(cors({ origin: '*' }));
 app.use(express.json());
 
 // In-memory state store
-export const properties = [...mockProperties];
+export const properties: PropertyRecord[] = JSON.parse(JSON.stringify(mockProperties));
 
 // Optional WebSocket broadcaster hook (populated in server.ts for standalone daemon)
 let broadcaster: ((data: object) => void) | null = null;
@@ -39,11 +37,11 @@ export function broadcast(data: object) {
 // Background simulation ticker for telemetry updates
 export function runSimulationTick() {
   for (const property of properties) {
-    SentinelSimulator.updateTelemetry(property.sentinelNode);
-    if (property.groundResponseTeam.status === 'EN_ROUTE') {
-      GroundMarshalService.simulateMarshalStep(
-        property.groundResponseTeam,
-        property.cadastre.coordinates[0]
+    // Subtle float charge variation
+    if (property.cameraPod.online) {
+      property.cameraPod.batteryPercentage = Math.min(
+        100,
+        Math.max(82, property.cameraPod.batteryPercentage + (Math.random() > 0.5 ? 0.2 : -0.2))
       );
     }
   }
@@ -51,9 +49,8 @@ export function runSimulationTick() {
     type: 'TELEMETRY_BATCH_UPDATE',
     properties: properties.map((p) => ({
       id: p.id,
-      sentinelNode: p.sentinelNode,
-      groundResponseTeam: p.groundResponseTeam,
-      registryRadar: p.registryRadar
+      cameraPod: p.cameraPod,
+      revenueRegistry: p.revenueRegistry
     }))
   });
 }
@@ -67,19 +64,15 @@ const apiRouter = express.Router();
 apiRouter.get('/health', (req: Request, res: Response) => {
   res.json({
     status: 'OPTIMAL',
-    platform: 'Paridhi Sovereign Perimeter Defense Core',
-    version: '1.0.0',
+    platform: 'Paridhi Remote Land Protection Core',
+    version: '2.0.0',
     deployment: 'Vercel Serverless Ready',
-    statutoryFramework: 'Bharatiya Sakshya Adhiniyam, 2023 §63',
     activePropertiesCount: properties.length,
-    activeSentinelsOnline: properties.filter(
-      (p) => p.sentinelNode.systemStatus !== 'OFFLINE'
-    ).length
+    camerasOnline: properties.filter((p) => p.cameraPod.online).length
   });
 });
 
 apiRouter.get('/properties', (req: Request, res: Response) => {
-  // Run quick simulation tick to keep telemetry fresh
   runSimulationTick();
   res.json({ properties });
 });
@@ -93,184 +86,231 @@ apiRouter.get('/properties/:id', (req: Request, res: Response) => {
   res.json({ property });
 });
 
-// Trigger Edge Anomaly / Incident Detection
-apiRouter.post('/properties/:id/trigger-incident', (req: Request, res: Response) => {
+// Request an On-Demand Physical Field Inspection
+apiRouter.post('/properties/:id/request-inspection', (req: Request, res: Response) => {
   const property = properties.find((p) => p.id === req.params.id);
   if (!property) {
     res.status(404).json({ error: 'Property not found' });
     return;
   }
 
-  const { threatType, customDescription } = req.body;
-  if (!threatType) {
-    res.status(400).json({ error: 'threatType is required' });
-    return;
-  }
+  const notes = req.body?.notes || 'Owner requested priority verification of boundary stones.';
+  const scheduledDate = new Date(Date.now() + 1000 * 60 * 60 * 36).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
 
-  const incident = SentinelSimulator.triggerIncident(
-    property,
-    threatType,
-    customDescription
-  );
+  const newActivity: ActivityEvent = {
+    id: `act-${Date.now()}`,
+    timestamp: 'Just now',
+    category: 'INSPECTION',
+    title: 'On-Demand Field Inspection Dispatched',
+    description: `Assigned to senior field inspector ${property.latestInspection.inspectorName}. Scheduled arrival: ${scheduledDate}. Notes: "${notes}"`,
+    severity: 'INFO'
+  };
+
+  property.recentActivity.unshift(newActivity);
+  property.latestInspection.nextScheduledDate = scheduledDate;
 
   broadcast({
-    type: 'INCIDENT_ALERT',
+    type: 'INSPECTION_REQUESTED',
     propertyId: property.id,
-    propertyName: property.name,
-    incident
+    scheduledDate,
+    activity: newActivity
   });
 
   res.status(201).json({
     success: true,
-    incident,
-    propertyStatus: property.sentinelNode.systemStatus
+    message: 'Field inspection successfully dispatched',
+    assignedInspector: property.latestInspection.inspectorName,
+    scheduledDate,
+    activity: newActivity
   });
 });
 
-// Control Directional Acoustic Siren & Strobe Deterrence
-apiRouter.post('/properties/:id/deterrence', (req: Request, res: Response) => {
+// Poll Official State Revenue Registry
+apiRouter.post('/properties/:id/poll-registry', (req: Request, res: Response) => {
   const property = properties.find((p) => p.id === req.params.id);
   if (!property) {
     res.status(404).json({ error: 'Property not found' });
     return;
   }
 
-  const { active, language } = req.body;
-  const result = SentinelSimulator.setDeterrence(property, Boolean(active), language);
+  const nowFormatted = `Today, ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} IST (verified)`;
+  property.revenueRegistry.lastCheckedTimestamp = nowFormatted;
+  property.revenueRegistry.cleanTitle = true;
+  property.revenueRegistry.pendingMutationsCount = 0;
+  property.revenueRegistry.unauthorizedMutationDetected = false;
+
+  const newActivity: ActivityEvent = {
+    id: `act-${Date.now()}`,
+    timestamp: 'Just now',
+    category: 'REGISTRY',
+    title: `${property.revenueRegistry.portalName} Polled`,
+    description: `Official state land records verified. ${property.surveyNumber} is 100% clean with zero adverse claims or mutation applications.`,
+    severity: 'SUCCESS'
+  };
+
+  property.recentActivity.unshift(newActivity);
 
   broadcast({
-    type: 'DETERRENCE_STATUS_CHANGE',
+    type: 'REGISTRY_POLLED',
     propertyId: property.id,
-    status: result.status,
-    message: result.broadcastMessage
-  });
-
-  res.json(result);
-});
-
-// Generate & Download BSA 2023 §63 Statutory Evidentiary Certificate
-apiRouter.get('/properties/:id/incidents/:incidentId/certificate', (req: Request, res: Response) => {
-  const property = properties.find((p) => p.id === req.params.id);
-  if (!property) {
-    res.status(404).json({ error: 'Property not found' });
-    return;
-  }
-
-  const incident = property.activeIncidents.find((i) => i.id === req.params.incidentId);
-  if (!incident) {
-    res.status(404).json({ error: 'Incident not found' });
-    return;
-  }
-
-  const allHashes = property.activeIncidents.map((i) => i.sha256Hash);
-  const certificate = EvidenceVault.generateBsa2023Certificate(incident, property, allHashes);
-
-  res.json({ certificate });
-});
-
-// Generate 1-Click Caveat Petition under Section 148A CPC / Revenue Code
-apiRouter.get('/properties/:id/caveat/:mutationId', (req: Request, res: Response) => {
-  const property = properties.find((p) => p.id === req.params.id);
-  if (!property) {
-    res.status(404).json({ error: 'Property not found' });
-    return;
-  }
-
-  const alert = property.registryRadar.pendingMutations.find((m) => m.id === req.params.mutationId);
-  if (!alert) {
-    res.status(404).json({ error: 'Mutation alert not found' });
-    return;
-  }
-
-  const caveatDoc = RegistryRadarService.generateCaveatPetition(property, alert);
-  res.json({
-    mutationAlert: alert,
-    caveatPetitionMarkdown: caveatDoc.trim()
-  });
-});
-
-// Dispatch On-Ground Tactical Ground Marshal Unit
-apiRouter.post('/properties/:id/dispatch-marshal', (req: Request, res: Response) => {
-  const property = properties.find((p) => p.id === req.params.id);
-  if (!property) {
-    res.status(404).json({ error: 'Property not found' });
-    return;
-  }
-
-  const { incidentId } = req.body;
-  const unit = GroundMarshalService.dispatchMarshal(
-    property.groundResponseTeam,
-    property,
-    incidentId || property.activeIncidents[0]?.id || 'GENERAL_PATROL'
-  );
-
-  broadcast({
-    type: 'GROUND_MARSHAL_DISPATCHED',
-    propertyId: property.id,
-    marshalUnit: unit
+    revenueRegistry: property.revenueRegistry,
+    activity: newActivity
   });
 
   res.json({
     success: true,
-    marshalUnit: unit,
-    message: `Ground Marshal ${unit.callsign} (${unit.leadResponder}) dispatched. Guaranteed < 60-min SLA active.`
+    message: 'Official revenue registry audit completed',
+    revenueRegistry: property.revenueRegistry,
+    activity: newActivity
   });
 });
 
-// Poll State Land Records Portal
-apiRouter.get('/properties/:id/poll-registry', (req: Request, res: Response) => {
+// Retain Local Revenue Advocate & Issue Section 148A CPC Caveat / Legal Notice
+apiRouter.post('/properties/:id/retain-lawyer', (req: Request, res: Response) => {
   const property = properties.find((p) => p.id === req.params.id);
   if (!property) {
     res.status(404).json({ error: 'Property not found' });
     return;
   }
 
-  const pollResult = RegistryRadarService.pollRevenuePortal(property);
-  property.registryRadar.lastChecked = new Date().toISOString();
+  const reason = req.body?.reason || 'Preventive statutory caveat under Section 148A of the Code of Civil Procedure.';
+  property.legalRetainer.standingCaveatActive = true;
+  property.legalRetainer.statutoryNoticeStatus = 'CAVEAT_LODGED';
 
-  res.json(pollResult);
-});
+  const newActivity: ActivityEvent = {
+    id: `act-${Date.now()}`,
+    timestamp: 'Just now',
+    category: 'LEGAL',
+    title: `Section 148A CPC Caveat Lodged by ${property.legalRetainer.advocateName}`,
+    description: `Statutory caveat petition served on Tahsildar / Sub-Registrar. No title transfer or boundary amendment can proceed without direct notice to owner. Reason: ${reason}`,
+    severity: 'SUCCESS'
+  };
 
-// Simulate an Unauthorized Fraudulent Mutation filing (Testing & Verification)
-apiRouter.post('/properties/:id/simulate-mutation', (req: Request, res: Response) => {
-  const property = properties.find((p) => p.id === req.params.id);
-  if (!property) {
-    res.status(404).json({ error: 'Property not found' });
-    return;
-  }
-
-  const { applicantName, claimedType } = req.body;
-  const alert = RegistryRadarService.simulateUnauthorizedMutation(
-    property,
-    applicantName || 'Ch. Venkat Reddy & Associates',
-    claimedType || 'Fraudulent Succession & Mutation Petition'
-  );
+  property.recentActivity.unshift(newActivity);
 
   broadcast({
-    type: 'REGISTRY_RADAR_ALERT',
+    type: 'LEGAL_CAVEAT_LODGED',
     propertyId: property.id,
-    alert
+    legalRetainer: property.legalRetainer,
+    activity: newActivity
   });
 
   res.status(201).json({
     success: true,
-    alert,
-    message: 'Unauthorized mutation petition registered. 21-day statutory objection window active.'
+    message: 'Statutory caveat successfully lodged with local authorities',
+    legalRetainer: property.legalRetainer,
+    activity: newActivity
   });
 });
 
-// Mount router at both /api and root / for dual local and Vercel routing
+// Generate Complete Legal & Property Protection Dossier
+apiRouter.get('/properties/:id/dossier', (req: Request, res: Response) => {
+  const property = properties.find((p) => p.id === req.params.id);
+  if (!property) {
+    res.status(404).json({ error: 'Property not found' });
+    return;
+  }
+
+  const dossierPayload = JSON.stringify({
+    propertyId: property.id,
+    surveyNumber: property.surveyNumber,
+    owner: property.owner,
+    cadastre: property.location,
+    valuation: property.marketValuationINR,
+    cameraSnapshot: property.cameraPod.currentSnapshotUrl,
+    latestInspection: property.latestInspection,
+    revenueRegistry: property.revenueRegistry,
+    legalRetainer: property.legalRetainer,
+    generatedAt: new Date().toISOString()
+  });
+
+  const sha256Hash = EvidenceVault.computeSha256(dossierPayload);
+  const digitalSignature = EvidenceVault.signWithHsmKey(dossierPayload);
+
+  res.json({
+    dossierId: `PRD-DOSSIER-${property.id.toUpperCase()}-${Date.now()}`,
+    property,
+    cryptographicIntegrity: {
+      sha256Hash,
+      digitalSignature,
+      admissibilityFramework: 'Bharatiya Sakshya Adhiniyam, 2023 §63',
+      timestampUtc: new Date().toISOString()
+    }
+  });
+});
+
+// Simulate Incident / Perimeter Anomaly (for testing & interactive demo)
+apiRouter.post('/properties/:id/simulate-tamper', (req: Request, res: Response) => {
+  const property = properties.find((p) => p.id === req.params.id);
+  if (!property) {
+    res.status(404).json({ error: 'Property not found' });
+    return;
+  }
+
+  property.status = 'ATTENTION_NEEDED';
+  property.statusBadgeText = 'Attention Needed • Unscheduled Activity';
+  property.cameraPod.timelapseDifferenceDetected = true;
+  property.cameraPod.timelapseNotes = 'AI visual comparison flagged 35% pixel change: construction gravel deposited near North boundary stone.';
+
+  const newActivity: ActivityEvent = {
+    id: `act-${Date.now()}`,
+    timestamp: 'Just now',
+    category: 'CAMERA',
+    title: 'Visual Perimeter Anomaly Detected',
+    description: 'Weekly timelapse analysis detected anomalous material accumulation near boundary peg #2. Dispatched automated alert to owner and field inspector.',
+    severity: 'ALERT'
+  };
+
+  property.recentActivity.unshift(newActivity);
+
+  broadcast({
+    type: 'PROPERTY_UPDATED',
+    property
+  });
+
+  res.json({
+    success: true,
+    message: 'Perimeter anomaly simulated',
+    property
+  });
+});
+
+// Reset Property to Clean State
+apiRouter.post('/properties/:id/reset', (req: Request, res: Response) => {
+  const defaultProp = mockProperties.find((p) => p.id === req.params.id);
+  const propertyIndex = properties.findIndex((p) => p.id === req.params.id);
+  if (!defaultProp || propertyIndex === -1) {
+    res.status(404).json({ error: 'Property not found' });
+    return;
+  }
+
+  properties[propertyIndex] = JSON.parse(JSON.stringify(defaultProp));
+
+  broadcast({
+    type: 'PROPERTY_RESET',
+    property: properties[propertyIndex]
+  });
+
+  res.json({
+    success: true,
+    message: 'Property state reset to pristine baseline',
+    property: properties[propertyIndex]
+  });
+});
+
 app.use('/api', apiRouter);
-app.use('/', apiRouter);
 
-// Static Web Frontend Delivery for local standalone server
-const webDistPath = path.resolve(__dirname, '../../web/dist');
-if (fs.existsSync(webDistPath)) {
-  app.use(express.static(webDistPath));
-  app.get('*', (req: Request, res: Response, next) => {
-    if (req.path.startsWith('/api')) return next();
-    res.sendFile(path.join(webDistPath, 'index.html'));
+// Static Web Serving (production build)
+const clientBuildPath = path.resolve(__dirname, '../../web/dist');
+if (fs.existsSync(clientBuildPath)) {
+  app.use(express.static(clientBuildPath));
+  app.get('*', (req: Request, res: Response) => {
+    if (!req.path.startsWith('/api')) {
+      res.sendFile(path.join(clientBuildPath, 'index.html'));
+    }
   });
 }
-
-export default app;

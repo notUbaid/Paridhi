@@ -1,371 +1,354 @@
-import { useEffect, useState, useRef } from 'react';
-import type { PropertyRecord, IncidentDetection, MutationAlert } from './types.js';
-import { initialMockProperties } from './defaultData.js';
-import { Header } from './components/Header.js';
-import { PropertySelector } from './components/PropertySelector.js';
-import { CadastralMap } from './components/CadastralMap.js';
-import { SentinelLiveFeed } from './components/SentinelLiveFeed.js';
-import { RegistryRadarCard } from './components/RegistryRadarCard.js';
-import { GroundMarshalCard } from './components/GroundMarshalCard.js';
-import { EvidenceVaultModal } from './components/EvidenceVaultModal.js';
-import { CaveatModal } from './components/CaveatModal.js';
-import { SimulateIncidentModal } from './components/SimulateIncidentModal.js';
-import { FounderPitchModal } from './components/FounderPitchModal.js';
-import { History, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import type { PropertyRecord } from './types';
+import { mockProperties } from './defaultData';
+import { Header } from './components/Header';
+import { PropertySelector } from './components/PropertySelector';
+import { PlotBanner } from './components/PlotBanner';
+import { PlotVisualCard } from './components/PlotVisualCard';
+import { FieldInspectionCard } from './components/FieldInspectionCard';
+import { RevenueWatchCard } from './components/RevenueWatchCard';
+import { LegalActionCard } from './components/LegalActionCard';
+import { RecentActivityFeed } from './components/RecentActivityFeed';
+import { RequestInspectionModal } from './components/RequestInspectionModal';
+import { LegalCaveatModal } from './components/LegalCaveatModal';
+import { DossierModal } from './components/DossierModal';
+import { HowItWorksModal } from './components/HowItWorksModal';
 
-export function App() {
-  const [properties, setProperties] = useState<PropertyRecord[]>(initialMockProperties);
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('PRD-PROP-500081-01');
-  const [activeEvidenceIncident, setActiveEvidenceIncident] = useState<IncidentDetection | null>(null);
-  const [activeMutationAlert, setActiveMutationAlert] = useState<MutationAlert | null>(null);
-  const [isSimulateModalOpen, setIsSimulateModalOpen] = useState(false);
-  const [isPitchModalOpen, setIsPitchModalOpen] = useState(false);
-  const [isPollingRegistry, setIsPollingRegistry] = useState(false);
-  const [isDispatchingMarshal, setIsDispatchingMarshal] = useState(false);
-  const [wsConnected, setWsConnected] = useState(false);
-  const wsRef = useRef<WebSocket | null>(null);
+export const App: React.FC = () => {
+  const [properties, setProperties] = useState<PropertyRecord[]>(mockProperties);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>(mockProperties[0].id);
 
-  // Fetch initial properties from REST API
-  const refreshProperties = async () => {
-    try {
-      const res = await fetch('/api/properties');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.properties && data.properties.length > 0) {
-          setProperties(data.properties);
-        }
-      }
-    } catch (err) {
-      console.warn('REST API unavailable, using local mock data fallback:', err);
-    }
-  };
+  // Modals
+  const [isHowItWorksOpen, setIsHowItWorksOpen] = useState(false);
+  const [isDossierOpen, setIsDossierOpen] = useState(false);
+  const [isInspectionModalOpen, setIsInspectionModalOpen] = useState(false);
+  const [isCaveatModalOpen, setIsCaveatModalOpen] = useState(false);
+  const [isSimulatedTamper, setIsSimulatedTamper] = useState(false);
 
+  const activeProperty =
+    properties.find((p) => p.id === selectedPropertyId) || properties[0];
+
+  // Fetch live properties from backend if available
   useEffect(() => {
-    refreshProperties();
-
-    const isLocalhost =
-      window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1';
-
-    // Setup WebSocket connection when running locally on HTTP with daemon
-    const connectWs = () => {
-      if (!isLocalhost) {
-        setWsConnected(true);
-        return;
-      }
-
+    const fetchProperties = async () => {
       try {
-        const wsUrl = `ws://${window.location.hostname}:4001`;
-        const ws = new WebSocket(wsUrl);
-        wsRef.current = ws;
-
-        ws.onopen = () => {
-          setWsConnected(true);
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const payload = JSON.parse(event.data);
-            if (payload.type === 'INITIAL_STATE' && payload.properties) {
-              setProperties(payload.properties);
-            } else if (payload.type === 'TELEMETRY_BATCH_UPDATE') {
-              setProperties((prev) =>
-                prev.map((prop) => {
-                  const update = payload.properties.find((u: { id: string }) => u.id === prop.id);
-                  if (update) {
-                    return {
-                      ...prop,
-                      sentinelNode: update.sentinelNode || prop.sentinelNode,
-                      groundResponseTeam: update.groundResponseTeam || prop.groundResponseTeam,
-                      registryRadar: update.registryRadar || prop.registryRadar
-                    };
-                  }
-                  return prop;
-                })
-              );
-            } else if (payload.type === 'INCIDENT_ALERT') {
-              refreshProperties();
-            } else if (payload.type === 'REGISTRY_RADAR_ALERT') {
-              refreshProperties();
-            }
-          } catch (err) {
-            console.error('Error handling WebSocket message:', err);
+        const res = await fetch('/api/properties');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.properties && data.properties.length > 0) {
+            setProperties(data.properties);
           }
-        };
-
-        ws.onclose = () => {
-          setWsConnected(false);
-          setTimeout(connectWs, 3000);
-        };
-
-        ws.onerror = () => {
-          ws.close();
-        };
+        }
       } catch {
-        setWsConnected(false);
+        // Use defaultData in static/offline environments
       }
     };
 
-    connectWs();
+    fetchProperties();
 
-    // Regular cloud fallback polling interval (keeps Vercel serverless deployment live & fresh)
-    const pollInterval = setInterval(() => {
-      refreshProperties();
-    }, 4000);
+    // WebSocket connection for real-time live events (optional in local daemon)
+    let ws: WebSocket | null = null;
+    try {
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsHost = window.location.hostname || 'localhost';
+      const wsPort = '4001';
+      ws = new WebSocket(`${wsProtocol}//${wsHost}:${wsPort}`);
+
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type === 'INITIAL_STATE' && payload.properties) {
+            setProperties(payload.properties);
+          } else if (payload.type === 'PROPERTY_UPDATED' && payload.property) {
+            setProperties((prev) =>
+              prev.map((p) => (p.id === payload.property.id ? payload.property : p))
+            );
+          }
+        } catch {
+          // ignore malformed message
+        }
+      };
+    } catch {
+      // WS unavailable
+    }
 
     return () => {
-      clearInterval(pollInterval);
-      if (wsRef.current) wsRef.current.close();
+      if (ws) ws.close();
     };
   }, []);
 
-  const selectedProperty =
-    properties.find((p) => p.id === selectedPropertyId) || properties[0];
-
-  // Actions
-  const handleToggleDeterrence = async (active: boolean, language: string) => {
-    if (!selectedProperty) return;
+  // Handler: Request On-Demand Field Inspection
+  const handleRequestInspection = async (notes: string) => {
     try {
-      await fetch(`/api/properties/${selectedProperty.id}/deterrence`, {
+      const res = await fetch(`/api/properties/${activeProperty.id}/request-inspection`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ active, language })
+        body: JSON.stringify({ notes })
       });
-      refreshProperties();
-    } catch (err) {
-      console.error('Failed to update deterrence:', err);
+      if (res.ok) {
+        const data = await res.json();
+        setProperties((prev) =>
+          prev.map((p) => {
+            if (p.id === activeProperty.id) {
+              return {
+                ...p,
+                latestInspection: {
+                  ...p.latestInspection,
+                  nextScheduledDate: data.scheduledDate
+                },
+                recentActivity: [data.activity, ...p.recentActivity]
+              };
+            }
+            return p;
+          })
+        );
+      }
+    } catch {
+      // Fallback local update
+      const newAct = {
+        id: `act-${Date.now()}`,
+        timestamp: 'Just now',
+        category: 'INSPECTION' as const,
+        title: 'On-Demand Field Inspection Dispatched',
+        description: `Assigned to senior inspector ${activeProperty.latestInspection.inspectorName}. Arrival within 48h. Notes: "${notes}"`,
+        severity: 'INFO' as const
+      };
+      setProperties((prev) =>
+        prev.map((p) =>
+          p.id === activeProperty.id
+            ? { ...p, recentActivity: [newAct, ...p.recentActivity] }
+            : p
+        )
+      );
     }
   };
 
-  const handleDispatchMarshal = async () => {
-    if (!selectedProperty) return;
-    setIsDispatchingMarshal(true);
+  // Handler: Verify State Land Revenue Registry
+  const handleVerifyRegistry = async () => {
     try {
-      await fetch(`/api/properties/${selectedProperty.id}/dispatch-marshal`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          incidentId: selectedProperty.activeIncidents[0]?.id
+      const res = await fetch(`/api/properties/${activeProperty.id}/poll-registry`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProperties((prev) =>
+          prev.map((p) => {
+            if (p.id === activeProperty.id) {
+              return {
+                ...p,
+                revenueRegistry: data.revenueRegistry,
+                recentActivity: [data.activity, ...p.recentActivity]
+              };
+            }
+            return p;
+          })
+        );
+      }
+    } catch {
+      // Local fallback
+      const nowFormatted = `Today, ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} IST (verified)`;
+      const newAct = {
+        id: `act-${Date.now()}`,
+        timestamp: 'Just now',
+        category: 'REGISTRY' as const,
+        title: `${activeProperty.revenueRegistry.portalName} Polled`,
+        description: `Official state land records verified. ${activeProperty.surveyNumber} is 100% clean with zero adverse claims.`,
+        severity: 'SUCCESS' as const
+      };
+      setProperties((prev) =>
+        prev.map((p) => {
+          if (p.id === activeProperty.id) {
+            return {
+              ...p,
+              revenueRegistry: {
+                ...p.revenueRegistry,
+                lastCheckedTimestamp: nowFormatted
+              },
+              recentActivity: [newAct, ...p.recentActivity]
+            };
+          }
+          return p;
         })
-      });
-      refreshProperties();
-    } catch (err) {
-      console.error('Failed to dispatch marshal:', err);
-    } finally {
-      setIsDispatchingMarshal(false);
+      );
     }
   };
 
-  const handlePollRegistry = async () => {
-    if (!selectedProperty) return;
-    setIsPollingRegistry(true);
+  // Handler: Retain Advocate for Legal Notice / Caveat
+  const handleRetainLawyer = async () => {
     try {
-      await fetch(`/api/properties/${selectedProperty.id}/poll-registry`);
-      refreshProperties();
-    } catch (err) {
-      console.error('Failed to poll revenue portal:', err);
-    } finally {
-      setIsPollingRegistry(false);
-    }
-  };
-
-  const handleSimulateMutation = async () => {
-    if (!selectedProperty) return;
-    try {
-      await fetch(`/api/properties/${selectedProperty.id}/simulate-mutation`, {
+      const res = await fetch(`/api/properties/${activeProperty.id}/retain-lawyer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          applicantName: 'M. Venkat Reddy & Associates',
-          claimedType: 'Fraudulent Partition & Mutation Application'
-        })
+        body: JSON.stringify({ reason: 'Routine protective caveat renewal under Section 148A CPC' })
       });
-      refreshProperties();
-    } catch (err) {
-      console.error('Failed to simulate mutation:', err);
+      if (res.ok) {
+        const data = await res.json();
+        setProperties((prev) =>
+          prev.map((p) => {
+            if (p.id === activeProperty.id) {
+              return {
+                ...p,
+                legalRetainer: data.legalRetainer,
+                recentActivity: [data.activity, ...p.recentActivity]
+              };
+            }
+            return p;
+          })
+        );
+      }
+    } catch {
+      // Local fallback
+      setIsCaveatModalOpen(true);
     }
   };
 
-  const criticalThreatActive = properties.some((p) =>
-    p.activeIncidents.some((i) => i.severity === 'CRITICAL')
-  );
-
-  if (!selectedProperty) {
-    return (
-      <div className="min-h-screen bg-[#f8fafc] text-slate-700 flex items-center justify-center font-mono text-sm">
-        Connecting to Paridhi Sovereign Defense Network...
-      </div>
-    );
-  }
+  // Handler: Toggle Simulated Tamper / Alert for Demo
+  const handleSimulateTamper = async () => {
+    if (!isSimulatedTamper) {
+      setIsSimulatedTamper(true);
+      try {
+        await fetch(`/api/properties/${activeProperty.id}/simulate-tamper`, {
+          method: 'POST'
+        });
+      } catch {
+        // Fallback local mutation
+      }
+      setProperties((prev) =>
+        prev.map((p) => {
+          if (p.id === activeProperty.id) {
+            return {
+              ...p,
+              status: 'ATTENTION_NEEDED',
+              statusBadgeText: 'Attention Needed • Unscheduled Activity',
+              cameraPod: {
+                ...p.cameraPod,
+                timelapseDifferenceDetected: true,
+                timelapseNotes: 'AI visual comparison flagged 35% pixel change: construction gravel deposited near North boundary stone.'
+              },
+              recentActivity: [
+                {
+                  id: `act-${Date.now()}`,
+                  timestamp: 'Just now',
+                  category: 'CAMERA',
+                  title: 'Visual Perimeter Anomaly Detected',
+                  description: 'Weekly timelapse analysis detected anomalous material accumulation near boundary peg #2. Dispatched automated alert to owner and field inspector.',
+                  severity: 'ALERT'
+                },
+                ...p.recentActivity
+              ]
+            };
+          }
+          return p;
+        })
+      );
+    } else {
+      setIsSimulatedTamper(false);
+      try {
+        await fetch(`/api/properties/${activeProperty.id}/reset`, {
+          method: 'POST'
+        });
+      } catch {
+        // Fallback local reset
+      }
+      const baseline = mockProperties.find((p) => p.id === activeProperty.id) || mockProperties[0];
+      setProperties((prev) =>
+        prev.map((p) => (p.id === activeProperty.id ? JSON.parse(JSON.stringify(baseline)) : p))
+      );
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col antialiased selection:bg-slate-200">
-      {/* Top Sovereign Bar */}
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col font-sans selection:bg-slate-900 selection:text-white">
+      {/* Top Authoritative Header */}
       <Header
-        activeSentinelsCount={properties.length}
-        criticalThreatActive={criticalThreatActive}
-        onOpenPitchModal={() => setIsPitchModalOpen(true)}
+        onOpenHowItWorks={() => setIsHowItWorksOpen(true)}
+        onOpenDossier={() => setIsDossierOpen(true)}
+        onSimulateTamper={handleSimulateTamper}
+        isSimulatedTamper={isSimulatedTamper}
       />
 
-      {/* Main Command Center Layout */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6">
-        {/* Top Property Selector Bento */}
-        <section>
-          <div className="flex items-center justify-between mb-2.5">
-            <h2 className="text-[11px] font-mono font-bold text-slate-500 uppercase tracking-wider">
-              Protected Diaspora Land Holdings
-            </h2>
-            <div className="flex items-center gap-2 text-[11px] font-mono">
-              <span
-                className={`inline-block w-2 h-2 rounded-full ${
-                  wsConnected ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'
-                }`}
-              />
-              <span className="text-slate-500">
-                {wsConnected ? 'Telemetry Synchronized' : 'Reconnecting Telemetry...'}
-              </span>
-            </div>
-          </div>
-          <PropertySelector
-            properties={properties}
-            selectedPropertyId={selectedPropertyId}
-            onSelectProperty={(id) => setSelectedPropertyId(id)}
+      {/* Property Selector */}
+      <PropertySelector
+        properties={properties}
+        selectedPropertyId={selectedPropertyId}
+        onSelectProperty={setSelectedPropertyId}
+      />
+
+      {/* Main Command Dashboard */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-6 space-y-6">
+        {/* Active Plot Summary Banner */}
+        <PlotBanner property={activeProperty} />
+
+        {/* Primary Row: Visual 4G Monitoring + Monthly In-Person Human Audits */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <PlotVisualCard
+            cameraPod={activeProperty.cameraPod}
+            surveyNumber={activeProperty.surveyNumber}
           />
-        </section>
+          <FieldInspectionCard
+            inspection={activeProperty.latestInspection}
+            onRequestVisit={() => setIsInspectionModalOpen(true)}
+          />
+        </div>
 
-        {/* Tactical Grid: Map & Live Video Feed + Registry & Response Teams */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column: Cadastral Map & 4K Sentinel Live Stream (7 Cols) */}
-          <div className="lg:col-span-7 space-y-6">
-            <CadastralMap
-              property={selectedProperty}
-              onOpenIncidentEvidence={(incident) => setActiveEvidenceIncident(incident)}
-              onTriggerTestModal={() => setIsSimulateModalOpen(true)}
-            />
+        {/* Secondary Row: State Land Registry Watch + Legal Retainer */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <RevenueWatchCard
+            registry={activeProperty.revenueRegistry}
+            onVerifyNow={handleVerifyRegistry}
+          />
+          <LegalActionCard
+            legalRetainer={activeProperty.legalRetainer}
+            onOpenCaveatModal={() => setIsCaveatModalOpen(true)}
+            onRetainLawyer={handleRetainLawyer}
+            onDownloadDossier={() => setIsDossierOpen(true)}
+          />
+        </div>
 
-            <SentinelLiveFeed
-              property={selectedProperty}
-              onOpenEvidence={(incident) => setActiveEvidenceIncident(incident)}
-              onToggleDeterrence={handleToggleDeterrence}
-            />
-          </div>
-
-          {/* Right Column: Registry Radar, Ground Marshal & Threat Ledger (5 Cols) */}
-          <div className="lg:col-span-5 space-y-6">
-            <RegistryRadarCard
-              property={selectedProperty}
-              onOpenCaveat={(mut) => setActiveMutationAlert(mut)}
-              onPollPortal={handlePollRegistry}
-              onSimulateMutation={handleSimulateMutation}
-              isPolling={isPollingRegistry}
-            />
-
-            <GroundMarshalCard
-              property={selectedProperty}
-              onDispatchMarshal={handleDispatchMarshal}
-              isDispatching={isDispatchingMarshal}
-            />
-
-            {/* Active Threat Ledger */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <History className="w-4 h-4 text-slate-700" />
-                  <h3 className="text-xs font-semibold text-slate-900 font-mono tracking-tight">
-                    Cryptographic Threat Audit Ledger
-                  </h3>
-                </div>
-                <span className="text-[10px] font-mono text-slate-500">
-                  {selectedProperty.activeIncidents.length} Events Recorded
-                </span>
-              </div>
-
-              <div className="space-y-2.5 max-h-56 overflow-y-auto">
-                {selectedProperty.activeIncidents.length === 0 ? (
-                  <div className="py-8 text-center text-xs text-slate-500 font-mono">
-                    <ShieldCheck className="w-6 h-6 text-emerald-600 mx-auto mb-1.5 opacity-80" />
-                    Zero perimeter violations or encroachment signatures recorded.
-                  </div>
-                ) : (
-                  selectedProperty.activeIncidents.map((incident) => {
-                    const isCritical = incident.severity === 'CRITICAL';
-                    return (
-                      <div
-                        key={incident.id}
-                        onClick={() => setActiveEvidenceIncident(incident)}
-                        className={`p-3 rounded-lg border transition-all cursor-pointer flex items-start justify-between gap-3 ${
-                          isCritical
-                            ? 'bg-rose-50/70 border-rose-200 hover:border-rose-400'
-                            : 'bg-slate-50 border-slate-200 hover:border-slate-300'
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-center gap-2 text-xs font-mono font-bold">
-                            <span
-                              className={isCritical ? 'text-rose-700' : 'text-slate-800'}
-                            >
-                              {incident.threatType}
-                            </span>
-                            <span className="text-[10px] text-slate-500 font-normal">
-                              {new Date(incident.timestamp).toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-600 mt-1 line-clamp-1">
-                            {incident.description}
-                          </p>
-                          <div className="text-[9px] font-mono text-slate-500 mt-1">
-                            SHA: {incident.sha256Hash.substring(0, 16)}...
-                          </div>
-                        </div>
-
-                        <span className="px-2 py-0.5 rounded bg-white border border-slate-300 text-slate-800 text-[10px] font-mono font-semibold shrink-0 shadow-2xs">
-                          BSA §63
-                        </span>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
+        {/* Chronological Audit Log */}
+        <RecentActivityFeed activities={activeProperty.recentActivity} />
       </main>
 
+      {/* Footer */}
+      <footer className="border-t border-slate-200 bg-white py-6 px-6 text-xs text-slate-500">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-slate-900">PARIDHI (परिधि)</span>
+            <span>•</span>
+            <span>Remote Vacant Land Security & Verified Title Protection</span>
+          </div>
+          <div className="text-slate-400 font-mono text-[11px]">
+            Operating across Telangana (Dharani), Karnataka (Bhoomi), Punjab (Jamabandi) & NCR
+          </div>
+        </div>
+      </footer>
+
       {/* Modals */}
-      {activeEvidenceIncident && (
-        <EvidenceVaultModal
-          incident={activeEvidenceIncident}
-          property={selectedProperty}
-          onClose={() => setActiveEvidenceIncident(null)}
-        />
-      )}
+      <RequestInspectionModal
+        property={activeProperty}
+        isOpen={isInspectionModalOpen}
+        onClose={() => setIsInspectionModalOpen(false)}
+        onSubmit={handleRequestInspection}
+      />
 
-      {activeMutationAlert && (
-        <CaveatModal
-          property={selectedProperty}
-          mutation={activeMutationAlert}
-          onClose={() => setActiveMutationAlert(null)}
-        />
-      )}
+      <LegalCaveatModal
+        property={activeProperty}
+        isOpen={isCaveatModalOpen}
+        onClose={() => setIsCaveatModalOpen(false)}
+      />
 
-      {isSimulateModalOpen && (
-        <SimulateIncidentModal
-          property={selectedProperty}
-          onClose={() => setIsSimulateModalOpen(false)}
-          onIncidentTriggered={refreshProperties}
-        />
-      )}
+      <DossierModal
+        property={activeProperty}
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+      />
 
-      {isPitchModalOpen && (
-        <FounderPitchModal
-          onClose={() => setIsPitchModalOpen(false)}
-        />
-      )}
+      <HowItWorksModal
+        isOpen={isHowItWorksOpen}
+        onClose={() => setIsHowItWorksOpen(false)}
+      />
     </div>
   );
-}
+};
 
 export default App;

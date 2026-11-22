@@ -1,6 +1,6 @@
 import React from 'react';
-import type { PropertyRecord } from '../types.js';
-import { MapPin, AlertCircle, ShieldCheck, FileWarning } from 'lucide-react';
+import type { PropertyRecord } from '../types';
+import { MapPin, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 interface PropertySelectorProps {
   properties: PropertyRecord[];
@@ -14,69 +14,71 @@ export const PropertySelector: React.FC<PropertySelectorProps> = ({
   onSelectProperty
 }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-      {properties.map((property) => {
-        const isSelected = property.id === selectedPropertyId;
-        const hasCritical = property.activeIncidents.some((i) => i.severity === 'CRITICAL');
-        const hasWarning = property.activeIncidents.length > 0 || !property.registryRadar.cleanTitle;
+    <div className="bg-white border-b border-slate-200 px-6 py-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Portfolio of Monitored Real Estate Holdings
+          </div>
+          <div className="text-xs text-slate-500 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+            <span>All 3 plots registered under continuous 4G solar & revenue monitoring</span>
+          </div>
+        </div>
 
-        return (
-          <button
-            key={property.id}
-            onClick={() => onSelectProperty(property.id)}
-            className={`text-left p-4 rounded-xl border transition-all duration-150 relative bg-white ${
-              isSelected
-                ? 'border-slate-900 ring-2 ring-slate-900 shadow-md'
-                : 'border-slate-200 hover:border-slate-400 hover:shadow-xs'
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-sm font-bold text-slate-900 tracking-tight">
-                  {property.name}
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-slate-600 mt-1">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span>
-                    Survey {property.cadastre.surveyNumber} • {property.cadastre.village},{' '}
-                    {property.cadastre.district}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {properties.map((prop) => {
+            const isSelected = prop.id === selectedPropertyId;
+            const isAlert = prop.status !== 'ALL_CLEAR';
+
+            return (
+              <button
+                key={prop.id}
+                onClick={() => onSelectProperty(prop.id)}
+                className={`text-left rounded-xl p-3.5 border transition-all cursor-pointer relative ${
+                  isSelected
+                    ? 'bg-slate-50/80 border-slate-900 shadow-xs ring-1 ring-slate-900/10'
+                    : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <div className="font-semibold text-slate-900 text-sm tracking-tight truncate">
+                    {prop.name}
+                  </div>
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 flex items-center gap-1 ${
+                      isAlert
+                        ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    }`}
+                  >
+                    {isAlert ? (
+                      <AlertTriangle className="w-2.5 h-2.5 text-amber-600" />
+                    ) : (
+                      <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                    )}
+                    {isAlert ? 'Attention' : 'Protected'}
                   </span>
                 </div>
-              </div>
 
-              {/* Status Indicator */}
-              {hasCritical ? (
-                <span className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-red-50 border border-red-200 text-red-700 shrink-0">
-                  <AlertCircle className="w-3 h-3 text-red-600" />
-                  Breach Alert
-                </span>
-              ) : hasWarning ? (
-                <span className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-700 shrink-0">
-                  <FileWarning className="w-3 h-3 text-amber-600" />
-                  Mutation Flag
-                </span>
-              ) : (
-                <span className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 shrink-0">
-                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                  Clear & Intact
-                </span>
-              )}
-            </div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-2 truncate">
+                  <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                  <span className="truncate">{prop.location.cityNear}</span>
+                </div>
 
-            {/* Metrics footer */}
-            <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <div>
-                <span className="text-slate-400">Owner:</span>{' '}
-                <span className="text-slate-700 font-medium">{property.ownerName.split(' ')[0]} ({property.ownerOverseasCity.split(',')[0]})</span>
-              </div>
-              <div className="font-mono text-slate-900 font-semibold">
-                ₹{(property.cadastre.marketValuationINR / 10000000).toFixed(1)} Cr{' '}
-                <span className="text-slate-400 font-normal">({property.cadastre.areaAcres} Ac)</span>
-              </div>
-            </div>
-          </button>
-        );
-      })}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                  <div className="font-mono text-slate-600 text-[11px]">
+                    {prop.surveyNumber} • {prop.plotSizeDisplay}
+                  </div>
+                  <div className="font-semibold text-slate-900">
+                    ₹{(prop.marketValuationINR / 10000000).toFixed(2)} Cr
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };

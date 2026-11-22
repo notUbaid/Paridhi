@@ -1,7 +1,8 @@
 {
   "name": "@paridhi/services",
   "version": "1.0.0",
-  "description": "Paridhi Core Services: Edge Sentinel Simulator, Cryptographic Evidence Vault, and Cadastral Registry Radar",
+  "type": "module",
+  "description": "Paridhi Core Services: Verified Remote Land Protection & Evidence Custody Engine",
   "main": "src/server.ts",
   "scripts": {
     "start": "tsx src/server.ts",

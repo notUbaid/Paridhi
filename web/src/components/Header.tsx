@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Clock, FileText, CheckCircle2 } from 'lucide-react';
+import { Clock, ShieldCheck, FileCheck, HelpCircle, AlertTriangle } from 'lucide-react';
 
 interface HeaderProps {
-  activeSentinelsCount: number;
-  criticalThreatActive: boolean;
-  onOpenPitchModal: () => void;
+  onOpenHowItWorks: () => void;
+  onOpenDossier: () => void;
+  onSimulateTamper: () => void;
+  isSimulatedTamper: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  activeSentinelsCount,
-  criticalThreatActive,
-  onOpenPitchModal
+  onOpenHowItWorks,
+  onOpenDossier,
+  onSimulateTamper,
+  isSimulatedTamper
 }) => {
   const [istTime, setIstTime] = useState('');
   const [pstTime, setPstTime] = useState('');
@@ -46,9 +48,9 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="border-b border-slate-200 bg-white sticky top-0 z-40 px-6 py-3.5 shadow-xs">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Brand identity: Authoritative, architectural, unadorned */}
+        {/* Brand identity: Authoritative, calm, trustworthy */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-md bg-slate-900 text-white flex items-center justify-center font-bold text-lg select-none shrink-0">
+          <div className="w-9 h-9 rounded-md bg-slate-900 text-white flex items-center justify-center font-bold text-lg select-none shrink-0 shadow-xs">
             प
           </div>
           <div>
@@ -56,23 +58,24 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="text-lg font-bold tracking-tight text-slate-900">
                 PARIDHI
               </span>
-              <span className="text-xs text-slate-500 font-mono">
+              <span className="text-xs text-slate-400 font-mono">
                 / परिधि
               </span>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-medium border border-slate-200">
-                Cadastral Defense Workstation • {activeSentinelsCount} Nodes Active
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-medium border border-emerald-200 flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                3 Plots Active & Protected
               </span>
             </div>
-            <div className="text-[11px] text-slate-500 tracking-normal">
-              Autonomous Off-Grid Boundary Intelligence & Statutory Evidence Custody (BSA 2023)
+            <div className="text-[12px] text-slate-500 font-normal">
+              Remote Vacant Land Security & Verified Title Protection for the Indian Diaspora
             </div>
           </div>
         </div>
 
-        {/* Global Diaspora Time & Key Statutory Stamps */}
-        <div className="flex items-center flex-wrap gap-3 text-xs">
+        {/* Global Diaspora Time & Action Controls */}
+        <div className="flex items-center flex-wrap gap-2.5 text-xs">
           {/* Dual Diaspora Time Engine */}
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/90 rounded-lg px-3 py-1.5 text-slate-700 font-mono text-[11px]">
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 font-mono text-[11px]">
             <Clock className="w-3.5 h-3.5 text-slate-500" />
             <span className="text-slate-400">Ground:</span>
             <span className="text-slate-900 font-semibold">{istTime}</span>
@@ -81,27 +84,36 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-slate-700 font-medium">{pstTime}</span>
           </div>
 
-          {/* Statutory Court Stamp */}
-          <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1.5 text-emerald-800 text-[11px] font-medium">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-            <span>BSA 2023 §63 Certified</span>
-          </div>
-
-          {/* Incident Alert indicator if critical */}
-          {criticalThreatActive && (
-            <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5 text-red-700 text-[11px] font-medium animate-pulse">
-              <span className="w-2 h-2 rounded-full bg-red-600"></span>
-              <span>Active Breach Triggered</span>
-            </div>
-          )}
-
-          {/* Founder Presentation Dossier Action */}
+          {/* Simulate Alert Button (for interactive demo) */}
           <button
-            onClick={onOpenPitchModal}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs transition-colors shadow-xs"
+            onClick={onSimulateTamper}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-colors cursor-pointer ${
+              isSimulatedTamper
+                ? 'bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100'
+                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+            }`}
+            title="Simulate an unscheduled perimeter event to verify alerts and weekly timelapse change detection"
           >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Founder Brief & Thesis</span>
+            <AlertTriangle className={`w-3.5 h-3.5 ${isSimulatedTamper ? 'text-amber-600' : 'text-slate-400'}`} />
+            <span>{isSimulatedTamper ? 'Reset Demo State' : 'Test Alert Trigger'}</span>
+          </button>
+
+          {/* Verified Ownership Dossier */}
+          <button
+            onClick={onOpenDossier}
+            className="flex items-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 rounded-lg px-3 py-1.5 text-[11px] font-medium transition-colors cursor-pointer"
+          >
+            <FileCheck className="w-3.5 h-3.5 text-slate-600" />
+            <span>Title & Evidence Dossier</span>
+          </button>
+
+          {/* How It Works Button */}
+          <button
+            onClick={onOpenHowItWorks}
+            className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg px-3.5 py-1.5 text-[11px] font-medium transition-colors shadow-xs cursor-pointer"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-slate-300" />
+            <span>How Paridhi Works</span>
           </button>
         </div>
       </div>

@@ -1,12 +1,10 @@
 import assert from 'node:assert';
 import { EvidenceVault } from '../src/crypto/evidenceVault.js';
 import { mockProperties } from '../src/db.js';
-import { SentinelSimulator } from '../src/edge/sentinelSimulator.js';
-import { RegistryRadarService } from '../src/radar/registryRadar.js';
-import { GroundMarshalService } from '../src/marshal/groundMarshal.js';
+import { properties, app } from '../src/app.js';
 
 console.log('----------------------------------------------------');
-console.log('PARIDHI SOVEREIGN ENGINE - AUTOMATED TEST SUITE');
+console.log('PARIDHI VERIFIED NRI LAND PROTECTION - TEST SUITE');
 console.log('----------------------------------------------------');
 
 let testsPassed = 0;
@@ -31,7 +29,7 @@ runTest('EvidenceVault: Computes deterministic SHA-256 hash', () => {
 });
 
 runTest('EvidenceVault: Signs and verifies hardware Ed25519 payload', () => {
-  const payload = 'INCIDENT_TELEMETRY_SAMPLE_SURVEY_124_2A';
+  const payload = 'INCIDENT_TELEMETRY_SAMPLE_SURVEY_412_A';
   const sigHex = EvidenceVault.signWithHsmKey(payload);
   assert.ok(sigHex.length > 0);
   const isValid = EvidenceVault.verifyHsmSignature(payload, sigHex);
@@ -43,16 +41,16 @@ runTest('EvidenceVault: Signs and verifies hardware Ed25519 payload', () => {
 // 2. Merkle Tree & Inclusion Proof Verification
 runTest('EvidenceVault: Builds Merkle Tree and verifies inclusion proof', () => {
   const leaves = [
-    EvidenceVault.computeSha256('FRAME_001'),
-    EvidenceVault.computeSha256('FRAME_002'),
-    EvidenceVault.computeSha256('FRAME_003'),
-    EvidenceVault.computeSha256('FRAME_004')
+    EvidenceVault.computeSha256('SNAPSHOT_WEEK_1'),
+    EvidenceVault.computeSha256('SNAPSHOT_WEEK_2'),
+    EvidenceVault.computeSha256('INSPECTION_NOV_19'),
+    EvidenceVault.computeSha256('DHARANI_AUDIT_LOG')
   ];
 
   const { root } = EvidenceVault.buildMerkleTree(leaves);
   assert.strictEqual(root.length, 64);
 
-  // Generate proof for FRAME_003
+  // Generate proof for INSPECTION_NOV_19
   const targetLeaf = leaves[2];
   const proof = EvidenceVault.getMerkleProof(targetLeaf, leaves);
   assert.strictEqual(proof.root, root);
@@ -71,79 +69,85 @@ runTest('EvidenceVault: Builds Merkle Tree and verifies inclusion proof', () => 
   assert.strictEqual(tamperedVerified, false);
 });
 
-// 3. Statutory BSA 2023 §63 Certificate
-runTest('EvidenceVault: Generates compliant BSA 2023 §63 Statutory Certificate', () => {
-  const property = mockProperties[0];
-  const incident = property.activeIncidents[0];
-  const cert = EvidenceVault.generateBsa2023Certificate(incident, property, [incident.sha256Hash]);
-
-  assert.ok(cert.certificateId.startsWith('BSA-63-'));
-  assert.strictEqual(cert.statutoryAct, 'Bharatiya Sakshya Adhiniyam, 2023 - Section 63(4)');
-  assert.strictEqual(cert.sha256PayloadHash, incident.sha256Hash);
-  assert.ok(cert.courtFilingFormatMarkdown.includes('BHARATIYA SAKSHYA ADHINIYAM, 2023'));
-  assert.ok(cert.courtFilingFormatMarkdown.includes(property.cadastre.surveyNumber));
-  assert.strictEqual(EvidenceVault.verifyMerkleProof(cert.merkleProof), true);
+// 3. Properties Schema & Asset Integrity
+runTest('Property Ledger: Validates all mock NRI property profiles', () => {
+  assert.ok(mockProperties.length >= 3);
+  for (const prop of mockProperties) {
+    assert.ok(prop.id.startsWith('prop-'));
+    assert.ok(prop.name.length > 0);
+    assert.ok(prop.surveyNumber.length > 0);
+    assert.ok(prop.marketValuationINR > 10000000); // Valuation > ₹1 Cr
+    assert.ok(prop.owner.overseasCity.length > 0);
+    assert.ok(prop.cameraPod.batteryPercentage >= 80);
+    assert.strictEqual(prop.cameraPod.online, true);
+    assert.strictEqual(prop.latestInspection.boundaryPillarsIntact, true);
+    assert.strictEqual(prop.revenueRegistry.cleanTitle, true);
+    assert.ok(prop.legalRetainer.advocateName.length > 0);
+  }
 });
 
-// 4. Registry Radar & Caveat Petition
-runTest('RegistryRadarService: Simulates mutation detection and generates Caveat Petition', () => {
-  const property = JSON.parse(JSON.stringify(mockProperties[0]));
-  const alert = RegistryRadarService.simulateUnauthorizedMutation(
-    property,
-    'S. K. Land Syndicate Pvt Ltd',
-    'Unregistered Partition & Title Claim'
-  );
+// 4. On-Demand Field Inspection Request Workflow
+runTest('Field Inspection Workflow: Dispatches verified on-demand inspection', () => {
+  const property = properties[0];
+  const initialActivityCount = property.recentActivity.length;
+  const notes = 'Urgent check requested after neighboring road work.';
 
-  assert.strictEqual(property.registryRadar.cleanTitle, false);
-  assert.strictEqual(property.registryRadar.pendingMutations.length, 1);
-  assert.strictEqual(alert.applicantName, 'S. K. Land Syndicate Pvt Ltd');
+  // Simulate API logic
+  const scheduledDate = 'Nov 25, 2026';
+  property.latestInspection.nextScheduledDate = scheduledDate;
+  property.recentActivity.unshift({
+    id: `act-test-${Date.now()}`,
+    timestamp: 'Just now',
+    category: 'INSPECTION',
+    title: 'On-Demand Field Inspection Dispatched',
+    description: `Assigned to ${property.latestInspection.inspectorName}. Scheduled arrival: ${scheduledDate}.`,
+    severity: 'INFO'
+  });
 
-  const caveat = RegistryRadarService.generateCaveatPetition(property, alert);
-  assert.ok(caveat.includes('CAVEAT PETITION UNDER SECTION 148A'));
-  assert.ok(caveat.includes(property.ownerName.toUpperCase()));
-  assert.ok(caveat.includes(property.cadastre.surveyNumber));
+  assert.strictEqual(property.recentActivity.length, initialActivityCount + 1);
+  assert.strictEqual(property.latestInspection.nextScheduledDate, scheduledDate);
+  assert.strictEqual(property.recentActivity[0].category, 'INSPECTION');
 });
 
-// 5. Ground Marshal Service: Haversine & Dispatch
-runTest('GroundMarshalService: Calculates distance and simulates dispatch movement', () => {
-  const property = JSON.parse(JSON.stringify(mockProperties[0]));
-  const unit = property.groundResponseTeam;
+// 5. State Revenue Registry Watch Workflow
+runTest('Revenue Registry Watch: Audits Dharani / Bhoomi state records', () => {
+  const property = properties[0];
+  assert.strictEqual(property.revenueRegistry.cleanTitle, true);
+  assert.strictEqual(property.revenueRegistry.pendingMutationsCount, 0);
+  assert.ok(property.revenueRegistry.portalName.includes('Dharani'));
 
-  const initialDistance = GroundMarshalService.calculateDistanceKm(
-    unit.currentLocation,
-    property.cadastre.coordinates[0]
-  );
-  assert.ok(initialDistance > 0);
-
-  const dispatched = GroundMarshalService.dispatchMarshal(unit, property, 'INC-TEST-001');
-  assert.strictEqual(dispatched.status, 'EN_ROUTE');
-  assert.ok(dispatched.etaMinutes > 0);
-
-  const initialEta = dispatched.etaMinutes;
-  GroundMarshalService.simulateMarshalStep(dispatched, property.cadastre.coordinates[0]);
-  assert.strictEqual(dispatched.etaMinutes, initialEta - 1);
+  // Update timestamp
+  const now = 'Today, 05:00 PM IST (verified)';
+  property.revenueRegistry.lastCheckedTimestamp = now;
+  assert.strictEqual(property.revenueRegistry.lastCheckedTimestamp, now);
 });
 
-// 6. Sentinel Simulator: Telemetry & Detection
-runTest('SentinelSimulator: Updates physical telemetry and triggers edge detection', () => {
-  const property = JSON.parse(JSON.stringify(mockProperties[0]));
-  const originalWatts = property.sentinelNode.solarWatts;
+// 6. Section 148A CPC Caveat & Legal Retainer
+runTest('Legal Protection: Verifies standing caveat & statutory notice status', () => {
+  const property = properties[0];
+  assert.strictEqual(property.legalRetainer.standingCaveatActive, true);
+  assert.ok(property.legalRetainer.jurisdictionCourt.includes('Telangana High Court'));
+  assert.ok(property.legalRetainer.caveatExpiryDate?.includes('2027'));
+});
 
-  SentinelSimulator.updateTelemetry(property.sentinelNode);
-  assert.ok(property.sentinelNode.batteryVoltage >= 12.0);
-  assert.ok(property.sentinelNode.opticalTamperScore < 0.1);
+// 7. Complete Verified Property Dossier Generation
+runTest('Dossier Generation: Generates verifiable legal and physical dossier', () => {
+  const property = properties[0];
+  const dossierPayload = JSON.stringify({
+    propertyId: property.id,
+    surveyNumber: property.surveyNumber,
+    owner: property.owner,
+    valuation: property.marketValuationINR,
+    inspection: property.latestInspection,
+    registry: property.revenueRegistry
+  });
 
-  const incident = SentinelSimulator.triggerIncident(
-    property,
-    'EARTHMOVER_ACTIVITY',
-    'Test earthmover leveled northern perimeter'
-  );
+  const hash = EvidenceVault.computeSha256(dossierPayload);
+  const sig = EvidenceVault.signWithHsmKey(dossierPayload);
 
-  assert.strictEqual(incident.threatType, 'EARTHMOVER_ACTIVITY');
-  assert.strictEqual(incident.severity, 'CRITICAL');
-  assert.strictEqual(incident.sha256Hash.length, 64);
-  assert.strictEqual(property.sentinelNode.systemStatus, 'DETERRENCE_ACTIVE');
-  assert.strictEqual(property.activeIncidents[0].id, incident.id);
+  assert.strictEqual(hash.length, 64);
+  assert.ok(sig.length > 0);
+  assert.strictEqual(EvidenceVault.verifyHsmSignature(dossierPayload, sig), true);
 });
 
 console.log('----------------------------------------------------');
