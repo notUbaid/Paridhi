@@ -1,115 +1,69 @@
-# PARIDHI (परिधि) - EVIDENTIARY SPECIFICATION
-## Cryptographic Chain of Custody & Statutory Certificate Generation
-### Under Section 63 of the Bharatiya Sakshya Adhiniyam (BSA), 2023
-*(Formerly Section 65B of the Indian Evidence Act, 1872)*
+# Evidence records
 
----
+What the signed evidence in Paridhi proves, what it does not, and how to check it.
 
-## 1. Statutory Context & Legal Requirements
+## Legal context
 
-On July 1, 2024, the Parliament of India enacted the **Bharatiya Sakshya Adhiniyam, 2023 (Act No. 47 of 2023)**, completely repealing and replacing the Indian Evidence Act, 1872. Section 63 of BSA 2023 governs the admissibility of electronic records in civil, criminal, and revenue judicial proceedings across India.
+Section 63 of the Bharatiya Sakshya Adhiniyam, 2023 (which replaced Section 65B of the Indian Evidence Act) governs
+electronic records as evidence. In short, and subject to an advocate's advice:
 
-### 1.1 The Judicial Trap for NRI Property Owners
-When an encroacher or land grabber trespasses onto a vacant property, owners typically attempt to present smartphone video clips or standard CCTV footage before the Court or Police. In Indian jurisprudence:
-1. *State (NCT of Delhi) v. Navjot Sandhu (2005)*, *Anvar P.V. v. P.K. Basheer (2014) 10 SCC 473*, and *Arjun Panditrao Khotkar v. Kailash Kushanrao Gorantyal (2020) 7 SCC 1* establish that **electronic evidence is inadmissible unless accompanied by a contemporaneous statutory certificate**.
-2. Standard consumer cameras lack tamper-proof cryptographic logs and can easily be challenged by defense counsel as "manipulated timestamps" or "tampered recordings".
-3. Under BSA 2023 Section 63(4), the statutory certificate must be signed by the **person in official management or custody of the computer device or cryptographic process** that produced the record.
+- An electronic record needs a certificate in the form set out in the Schedule to the Act. The Schedule has a part
+  for the party producing the record and a part for an expert.
+- The certificate is signed by people, not by software.
+- Whether a record is admitted, and how much weight it gets, is for the court.
 
----
+So Paridhi's job is to keep records that are easy to certify honestly: what was received, when, from which device, and
+proof that it has not changed since.
 
-## 2. Paridhi Cryptographic Custody Protocol (PCCP)
+## What the code does today
 
-The Paridhi Cryptographic Custody Protocol ensures that every frame and incident clip collected by an off-grid pod is provably genuine, mathematically untampered, and instantly admissible in High Courts, District Courts, and Revenue Tribunals.
+Implemented in [`services/src/evidence.ts`](../services/src/evidence.ts):
 
+1. **Canonical payload.** The data is serialised as JSON with sorted keys, so the same data always gives the same
+   bytes. That exact string is stored as `payload`.
+2. **Hash.** `sha256` is the SHA-256 of `payload`.
+3. **Signature.** `signature` is an Ed25519 signature over `payload`, made by the server when it receives the data.
+   `keyId` identifies the key (first 16 hex characters of the SHA-256 of the public key).
+4. **Merkle root.** Each plot's evidence hashes are combined into a Merkle root using the RFC 6962 construction
+   (separate prefixes for leaves and nodes, unpaired nodes promoted, not duplicated). The root is included in the
+   signed dossier.
+5. **Dossier.** `GET /api/properties/:id/dossier` signs a snapshot of everything on file for the plot, including the
+   computed status and alerts. The dashboard renders the dossier from the signed payload, so what you see is what was
+   signed.
+
+Camera incidents may include `snapshotSha256`, a hash of the image computed on the device. The server signs it along
+with its own receipt time.
+
+## Limits
+
+- **Signed on receipt, not at capture.** Off-the-shelf cameras cannot sign with Paridhi's key, so the signature proves
+  what the server received and when, not what the camera saw. Hardware signing at capture would need a camera with a
+  secure element.
+- **Key management.** Without `PARIDHI_SIGNING_KEY` the server generates a throwaway key at startup, and old signatures
+  stop verifying after a restart. Production needs one long-lived key in a secret manager or KMS, with its public key
+  published and rotation recorded.
+- **No independent timestamp yet.** Times come from the server clock. An RFC 3161 timestamp from a trusted authority
+  would make "when" independently checkable.
+- **Photos from inspectors** carry phone GPS and clock data, which can be faked. The 50 m geofence check catches
+  mistakes, not determined fraud.
+
+## Verifying a record
+
+Anyone with the public key can check a record. In Node.js:
+
+```js
+import crypto from 'node:crypto';
+
+const { publicKeyPem } = await (await fetch(`${base}/api/evidence/public-key`)).json();
+const { dossier } = await (await fetch(`${base}/api/properties/${id}/dossier`)).json();
+
+const hashOk = crypto.createHash('sha256').update(dossier.payload).digest('hex') === dossier.sha256;
+const signatureOk = crypto.verify(
+  null,
+  Buffer.from(dossier.payload),
+  crypto.createPublicKey(publicKeyPem),
+  Buffer.from(dossier.signature, 'base64')
+);
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                 ON-SITE 4G SOLAR POD (Edge)                 │
-│  - 2K Optical Sensor Frame Pipeline                         │
-│  - Hardware-Synchronized Timestamp                          │
-│  - Instant 4G LTE Cloud Upload over Encrypted TLS 1.3       │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  PARIDHI MERKLE VAULT                      │
-│  - Ingests Segments & Computes SHA-256 Checksum             │
-│  - Inserts Hashes into Append-Only Binary Merkle Tree       │
-│  - Anchors with Digital Signature (Ed25519)                 │
-│  - Generates Merkle Inclusion Proof (Audit Path)            │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│           BSA 2023 SECTION 63 STATUTORY CERTIFICATE         │
-│  - Ready-to-print legal dossier formatted for Indian Courts │
-│  - Class 3 DSC Digital Signature by System Custodian        │
-│  - High Court Civil Suit (Order 39 Rules 1-2 CPC) Ready     │
-│  - Criminal Trespass FIR (BNS 2023 Sec 329) Ready           │
-└─────────────────────────────────────────────────────────────┘
-```
 
----
-
-## 3. Mathematical & Cryptographic Formulation
-
-### 3.1 Per-Frame Atomic Checksum
-For each video frame or visual snapshot $F_t$ captured at time $t$:
-$$H_t = \operatorname{SHA-256}(F_t \parallel \mathrm{Metadata}_t)$$
-
-### 3.2 Digital Signature
-The cryptographic engine signs the payload hash:
-$$\sigma = \operatorname{Sign}(SK_{\mathrm{vault}},\, H_t \parallel t)$$
-
-### 3.3 Merkle Inclusion Proof
-The cloud vault aggregates all active snapshot hashes into an append-only binary Merkle Tree:
-$$\text{Root}_k = \operatorname{SHA-256}(\text{Left} \parallel \text{Right})$$
-
-For any court dispute, the system generates an audit path $P = \{p_1, p_2, \dots, p_m\}$ verifying that the snapshot existed in that exact bitwise state at that exact second.
-
----
-
-## 4. Statutory Certificate Template (BSA 2023 §63(4))
-
-```markdown
-IN THE COURT OF THE PRINCIPAL DISTRICT AND SESSIONS JUDGE / CIVIL JUDGE
-AT [DISTRICT / TALUK], [STATE], INDIA
-
-CIVIL SUIT / PETITION NO. _________ OF 202_
-IN THE MATTER OF:
-[OWNER NAME (NRI/OCI)]                                          ... PLAINTIFF
-VERSUS
-[ENCROACHER / UNKNOWN TRESPASSERS]                             ... DEFENDANTS
-
-CERTIFICATE UNDER SECTION 63(4) OF THE BHARATIYA SAKSHYA ADHINIYAM, 2023
-FOR ADMISSIBILITY OF ELECTRONIC RECORDS
-
-I, [Authorized Systems Custodian], aged about 38 years, 
-residing at [Address], Chief Systems Custodian and Head of Cryptographic 
-Integrity at Paridhi Technologies India Pvt. Ltd., do hereby solemnly affirm 
-and state on oath as under:
-
-1. I am the authorized systems custodian responsible for the cryptographic 
-   verification and maintenance of electronic evidence records produced by the 
-   Paridhi Remote Land Protection Platform, deployed at the Plaintiff's property 
-   situated at Survey / Khasra No. [KHASRA_NO], Village [VILLAGE], Mandal/Taluk [TALUK], 
-   District [DISTRICT], [STATE].
-
-2. I state that the 4G Solar Pod was regularly used to capture optical telemetry 
-   of the perimeter of the property in the ordinary course of security monitoring.
-
-3. I certify that throughout the period covering the incident dated [INCIDENT_TIMESTAMP], 
-   the said pod was operating properly and in an uncompromised condition.
-
-4. I further certify that the electronic record, having SHA-256 checksum hash:
-   [SHA256_HEX_HASH]
-   was generated instantaneously and anchored to the Paridhi Merkle Vault.
-
-5. I certify that the contents of the said electronic record are a direct, untouched, 
-   and mathematically verified reproduction of the event occurring at the property.
-
-DEPONENT:
-[Digital Signature / DSC Class 3]
-Systems Custodian & Lead Cryptographic Officer
-Paridhi Technologies India Pvt. Ltd.
-Date: [TIMESTAMP_ISO]
-```
+Browsers can do the same with `crypto.subtle.verify('Ed25519', …)`.

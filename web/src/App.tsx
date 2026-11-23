@@ -1,431 +1,268 @@
-import React, { useState, useEffect } from 'react';
-import type { PropertyRecord } from './types';
-import { mockProperties } from './defaultData';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
+import type { HealthResponse, PropertyRecord } from '@shared/types';
+import { api, errorMessage } from './api';
+import { DossierModal } from './components/DossierModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { FieldInspectionCard } from './components/FieldInspectionCard';
 import { Header } from './components/Header';
-import { PropertySelector } from './components/PropertySelector';
+import { HowItWorksModal } from './components/HowItWorksModal';
+import { LegalActionCard } from './components/LegalActionCard';
+import { LegalCaveatModal } from './components/LegalCaveatModal';
 import { PlotBanner } from './components/PlotBanner';
 import { PlotVisualCard } from './components/PlotVisualCard';
-import { FieldInspectionCard } from './components/FieldInspectionCard';
-import { RevenueWatchCard } from './components/RevenueWatchCard';
-import { LegalActionCard } from './components/LegalActionCard';
+import { PropertySelector } from './components/PropertySelector';
 import { RecentActivityFeed } from './components/RecentActivityFeed';
 import { RequestInspectionModal } from './components/RequestInspectionModal';
-import { LegalCaveatModal } from './components/LegalCaveatModal';
-import { DossierModal } from './components/DossierModal';
-import { HowItWorksModal } from './components/HowItWorksModal';
-import { ErrorBoundary } from './components/ErrorBoundary';
+import { RevenueWatchCard } from './components/RevenueWatchCard';
 import { Toast, type ToastNotification } from './components/Toast';
 
-export const App: React.FC = () => {
-  const [properties, setProperties] = useState<PropertyRecord[]>(mockProperties);
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string>(mockProperties[0].id);
-  const [syncStatus, setSyncStatus] = useState<'LIVE_CLOUD' | 'LOCAL_OFFLINE'>('LOCAL_OFFLINE');
+const POLL_INTERVAL_MS = 30_000;
+const CLOCK_TICK_MS = 30_000;
+
+type ModalName = 'how-it-works' | 'dossier' | 'caveat' | 'inspection';
+const MODALS: ModalName[] = ['how-it-works', 'dossier', 'caveat', 'inspection'];
+
+function modalFromHash(): ModalName | null {
+  const hash = window.location.hash.slice(1) as ModalName;
+  return MODALS.includes(hash) ? hash : null;
+}
+
+export default function App() {
+  const [properties, setProperties] = useState<PropertyRecord[] | null>(null);
+  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const [syncFailed, setSyncFailed] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [modal, setModal] = useState<ModalName | null>(modalFromHash);
   const [toast, setToast] = useState<ToastNotification | null>(null);
+  const [busy, setBusy] = useState<'registry' | 'caveat' | 'demo' | null>(null);
+  const [now, setNow] = useState(() => new Date());
 
-  // Modals
-  const [isHowItWorksOpen, setIsHowItWorksOpen] = useState(false);
-  const [isDossierOpen, setIsDossierOpen] = useState(false);
-  const [isInspectionModalOpen, setIsInspectionModalOpen] = useState(false);
-  const [isCaveatModalOpen, setIsCaveatModalOpen] = useState(false);
-  const [isSimulatedTamper, setIsSimulatedTamper] = useState(false);
+  // Bumped whenever an action changes a property, so a poll that started earlier can't overwrite it.
+  const mutationVersion = useRef(0);
 
-  const activeProperty =
-    properties.find((p) => p.id === selectedPropertyId) || properties[0];
-
-  const handleIncomingPayload = (payload: any) => {
-    if (payload.type === 'INITIAL_STATE' && payload.properties) {
-      setProperties(payload.properties);
-      setSyncStatus('LIVE_CLOUD');
-    } else if (payload.type === 'PROPERTY_UPDATED' && payload.property) {
-      setProperties((prev) =>
-        prev.map((p) => (p.id === payload.property.id ? payload.property : p))
-      );
-      setSyncStatus('LIVE_CLOUD');
-    }
-  };
-
-  // Fetch live properties from backend if available
-  useEffect(() => {
-    const fetchProperties = async () => {
-      try {
-        const res = await fetch('/api/properties');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.properties && data.properties.length > 0) {
-            setProperties(data.properties);
-            setSyncStatus('LIVE_CLOUD');
-          }
-        }
-      } catch {
-        setSyncStatus('LOCAL_OFFLINE');
-      }
-    };
-
-    fetchProperties();
-
-    // Real-time synchronization: WebSocket with fallback to Server-Sent Events (SSE)
-    let ws: WebSocket | null = null;
-    let eventSource: EventSource | null = null;
-
-    const setupSSE = () => {
-      if (typeof EventSource !== 'undefined' && !eventSource) {
-        eventSource = new EventSource('/api/events');
-        eventSource.onopen = () => setSyncStatus('LIVE_CLOUD');
-        eventSource.onmessage = (event) => {
-          try {
-            const payload = JSON.parse(event.data);
-            handleIncomingPayload(payload);
-          } catch {
-            // ignore malformed frame
-          }
-        };
-        eventSource.onerror = () => {
-          setSyncStatus('LOCAL_OFFLINE');
-        };
-      }
-    };
-
+  const refresh = useCallback(async () => {
+    const versionAtStart = mutationVersion.current;
     try {
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsHost = window.location.hostname || 'localhost';
-      const wsPort = '4001';
-      ws = new WebSocket(`${wsProtocol}//${wsHost}:${wsPort}`);
-
-      ws.onopen = () => {
-        setSyncStatus('LIVE_CLOUD');
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const payload = JSON.parse(event.data);
-          handleIncomingPayload(payload);
-        } catch {
-          // ignore malformed message
-        }
-      };
-
-      ws.onerror = () => {
-        setupSSE();
-      };
-    } catch {
-      setupSSE();
+      const [list, healthInfo] = await Promise.all([api.listProperties(), api.health()]);
+      if (mutationVersion.current === versionAtStart) setProperties(list);
+      setHealth(healthInfo);
+      setLastSyncedAt(new Date());
+      setSyncFailed(false);
+      setLoadError(null);
+    } catch (error) {
+      setSyncFailed(true);
+      setLoadError(errorMessage(error));
     }
-
-    return () => {
-      if (ws) ws.close();
-      if (eventSource) eventSource.close();
-    };
   }, []);
 
-  // Handler: Request On-Demand Field Inspection
+  useEffect(() => {
+    void refresh();
+    const poll = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refresh();
+    }, POLL_INTERVAL_MS);
+    const clock = window.setInterval(() => setNow(new Date()), CLOCK_TICK_MS);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refresh();
+    };
+    const onHashChange = () => setModal(modalFromHash());
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('hashchange', onHashChange);
+    return () => {
+      window.clearInterval(poll);
+      window.clearInterval(clock);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('hashchange', onHashChange);
+    };
+  }, [refresh]);
+
+  const openModal = (name: ModalName) => {
+    setModal(name);
+    window.history.replaceState(null, '', `#${name}`);
+  };
+  const closeModal = useCallback(() => {
+    setModal(null);
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  }, []);
+  const closeToast = useCallback(() => setToast(null), []);
+
+  const notify = (type: ToastNotification['type'], title: string, message: string) =>
+    setToast({ id: crypto.randomUUID(), type, title, message });
+
+  const replaceProperty = (updated: PropertyRecord) => {
+    mutationVersion.current += 1;
+    setProperties((current) => current?.map((p) => (p.id === updated.id ? updated : p)) ?? current);
+    setNow(new Date());
+  };
+
+  if (!properties) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-[#f8fafc]">
+        {loadError ? (
+          <div className="bg-white border border-slate-200 rounded-lg p-6 max-w-sm w-full text-center space-y-3">
+            <h1 className="text-sm font-semibold text-slate-900">Can't load your properties</h1>
+            <p className="text-xs text-slate-500">{loadError}</p>
+            <button
+              type="button"
+              onClick={() => void refresh()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Try again
+            </button>
+          </div>
+        ) : (
+          <p className="text-xs text-slate-500">Loading properties…</p>
+        )}
+      </div>
+    );
+  }
+
+  if (properties.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-xs text-slate-500">
+        No properties on this account yet.
+      </div>
+    );
+  }
+
+  const property = properties.find((p) => p.id === selectedId) ?? properties[0];
+  const demoMode = health?.demoMode ?? false;
+
   const handleRequestInspection = async (notes: string) => {
-    try {
-      const res = await fetch(`/api/properties/${activeProperty.id}/request-inspection`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setProperties((prev) =>
-          prev.map((p) => {
-            if (p.id === activeProperty.id) {
-              return {
-                ...p,
-                latestInspection: {
-                  ...p.latestInspection,
-                  nextScheduledDate: data.scheduledDate
-                },
-                recentActivity: [data.activity, ...p.recentActivity]
-              };
-            }
-            return p;
-          })
-        );
-      }
-    } catch {
-      // Fallback local update
-      const newAct = {
-        id: `act-${Date.now()}`,
-        timestamp: 'Just now',
-        category: 'INSPECTION' as const,
-        title: 'On-Demand Field Inspection Dispatched',
-        description: `Assigned to senior inspector ${activeProperty.latestInspection.inspectorName}. Arrival within 48h. Notes: "${notes}"`,
-        severity: 'INFO' as const
-      };
-      setProperties((prev) =>
-        prev.map((p) =>
-          p.id === activeProperty.id
-            ? { ...p, recentActivity: [newAct, ...p.recentActivity] }
-            : p
-        )
-      );
-    }
-    setToast({
-      id: `toast-${Date.now()}`,
-      type: 'INFO',
-      title: 'Field Inspection Dispatched',
-      message: `Assigned to ${activeProperty.latestInspection.inspectorName}. Target arrival < 48h with geotagged boundary survey.`
-    });
+    const updated = await api.requestInspection(property.id, notes);
+    replaceProperty(updated);
+    notify(
+      'SUCCESS',
+      'Inspection requested',
+      `${updated.latestInspection.inspectorName} is assigned, with a target of a visit within 48 hours.`
+    );
   };
 
-  // Handler: Verify State Land Revenue Registry
-  const handleVerifyRegistry = async () => {
+  const handleCheckRegistry = async () => {
+    setBusy('registry');
     try {
-      const res = await fetch(`/api/properties/${activeProperty.id}/poll-registry`, {
-        method: 'POST'
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setProperties((prev) =>
-          prev.map((p) => {
-            if (p.id === activeProperty.id) {
-              return {
-                ...p,
-                revenueRegistry: data.revenueRegistry,
-                recentActivity: [data.activity, ...p.recentActivity]
-              };
-            }
-            return p;
-          })
-        );
+      const updated = await api.checkRegistry(property.id);
+      replaceProperty(updated);
+      const flagged = updated.revenue.flaggedMutations.length;
+      if (flagged > 0) {
+        notify('ALERT', 'Record checked', `${flagged} application${flagged === 1 ? ' is' : 's are'} still flagged on the land record.`);
+      } else {
+        notify('SUCCESS', 'Record checked', `No new mutation applications on ${updated.revenue.portalName}.`);
       }
-    } catch {
-      // Local fallback
-      const nowFormatted = `Today, ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} IST (verified)`;
-      const newAct = {
-        id: `act-${Date.now()}`,
-        timestamp: 'Just now',
-        category: 'REGISTRY' as const,
-        title: `${activeProperty.revenueRegistry.portalName} Polled`,
-        description: `Official state land records verified. ${activeProperty.surveyNumber} is 100% clean with zero adverse claims.`,
-        severity: 'SUCCESS' as const
-      };
-      setProperties((prev) =>
-        prev.map((p) => {
-          if (p.id === activeProperty.id) {
-            return {
-              ...p,
-              revenueRegistry: {
-                ...p.revenueRegistry,
-                lastCheckedTimestamp: nowFormatted
-              },
-              recentActivity: [newAct, ...p.recentActivity]
-            };
-          }
-          return p;
-        })
-      );
-    }
-    setToast({
-      id: `toast-${Date.now()}`,
-      type: 'SUCCESS',
-      title: 'Revenue Registry Polled',
-      message: `${activeProperty.revenueRegistry.portalName} verified. Survey ${activeProperty.surveyNumber} is clean with zero encumbrance.`
-    });
-  };
-
-  // Handler: Retain Advocate for Legal Notice / Caveat
-  const handleRetainLawyer = async () => {
-    try {
-      const res = await fetch(`/api/properties/${activeProperty.id}/retain-lawyer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: 'Routine protective caveat renewal under Section 148A CPC' })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setProperties((prev) =>
-          prev.map((p) => {
-            if (p.id === activeProperty.id) {
-              return {
-                ...p,
-                legalRetainer: data.legalRetainer,
-                recentActivity: [data.activity, ...p.recentActivity]
-              };
-            }
-            return p;
-          })
-        );
-        setToast({
-          id: `toast-${Date.now()}`,
-          type: 'SUCCESS',
-          title: 'Section 148A Caveat Renewed',
-          message: '90-day statutory protection active. District Court & High Court notified against ex-parte orders.'
-        });
-      }
-    } catch {
-      // Local fallback
-      setIsCaveatModalOpen(true);
+    } catch (error) {
+      notify('ERROR', 'Check failed', errorMessage(error));
+    } finally {
+      setBusy(null);
     }
   };
 
-  // Handler: Toggle Simulated Tamper / Alert for Demo
-  const handleSimulateTamper = async () => {
-    if (!isSimulatedTamper) {
-      setIsSimulatedTamper(true);
-      try {
-        await fetch(`/api/properties/${activeProperty.id}/simulate-tamper`, {
-          method: 'POST'
-        });
-      } catch {
-        // Fallback local mutation
-      }
-      setProperties((prev) =>
-        prev.map((p) => {
-          if (p.id === activeProperty.id) {
-            return {
-              ...p,
-              status: 'ATTENTION_NEEDED',
-              statusBadgeText: 'Attention Needed • Unscheduled Activity',
-              cameraPod: {
-                ...p.cameraPod,
-                timelapseDifferenceDetected: true,
-                timelapseNotes: 'AI visual comparison flagged 35% pixel change: construction gravel deposited near North boundary stone.'
-              },
-              recentActivity: [
-                {
-                  id: `act-${Date.now()}`,
-                  timestamp: 'Just now',
-                  category: 'CAMERA',
-                  title: 'Visual Perimeter Anomaly Detected',
-                  description: 'Weekly timelapse analysis detected anomalous material accumulation near boundary peg #2. Dispatched automated alert to owner and field inspector.',
-                  severity: 'ALERT'
-                },
-                ...p.recentActivity
-              ]
-            };
-          }
-          return p;
-        })
+  const handleRequestCaveatRenewal = async () => {
+    setBusy('caveat');
+    try {
+      const updated = await api.requestCaveatRenewal(property.id);
+      replaceProperty(updated);
+      notify('INFO', 'Request sent to your advocate', `${updated.legal.advocateName} will confirm once the caveat is lodged.`);
+    } catch (error) {
+      notify('ERROR', 'Request not sent', errorMessage(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const demoAlertActive = property.camera.changeDetected;
+  const handleToggleDemoAlert = async () => {
+    setBusy('demo');
+    try {
+      const updated = demoAlertActive ? await api.resetDemo(property.id) : await api.simulateAlert(property.id);
+      replaceProperty(updated);
+      notify(
+        demoAlertActive ? 'INFO' : 'ALERT',
+        demoAlertActive ? 'Demo reset' : 'Simulated camera alert',
+        demoAlertActive ? `${updated.name} is back to its sample state.` : 'A camera change was flagged on this plot.'
       );
-      setToast({
-        id: `toast-${Date.now()}`,
-        type: 'ALERT',
-        title: 'Perimeter Alert Triggered',
-        message: 'Visual anomaly flagged near boundary peg. Dispatched alert to owner & ground inspector.'
-      });
-    } else {
-      setIsSimulatedTamper(false);
-      try {
-        await fetch(`/api/properties/${activeProperty.id}/reset`, {
-          method: 'POST'
-        });
-      } catch {
-        // Fallback local reset
-      }
-      const baseline = mockProperties.find((p) => p.id === activeProperty.id) || mockProperties[0];
-      setProperties((prev) =>
-        prev.map((p) => (p.id === activeProperty.id ? JSON.parse(JSON.stringify(baseline)) : p))
-      );
-      setToast({
-        id: `toast-${Date.now()}`,
-        type: 'INFO',
-        title: 'Perimeter Alert Cleared',
-        message: 'Property state restored to nominal secure baseline.'
-      });
+    } catch (error) {
+      notify('ERROR', 'Demo action failed', errorMessage(error));
+    } finally {
+      setBusy(null);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col font-sans selection:bg-slate-900 selection:text-white">
-      {/* Top Authoritative Header */}
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col">
       <Header
-        onOpenHowItWorks={() => setIsHowItWorksOpen(true)}
-        onOpenDossier={() => setIsDossierOpen(true)}
-        onSimulateTamper={handleSimulateTamper}
-        isSimulatedTamper={isSimulatedTamper}
-        syncStatus={syncStatus}
+        owner={property.owner}
+        demoMode={demoMode}
+        lastSyncedAt={lastSyncedAt}
+        syncFailed={syncFailed}
+        onOpenHowItWorks={() => openModal('how-it-works')}
+        onOpenDossier={() => openModal('dossier')}
+        demoAlert={
+          demoMode ? { active: demoAlertActive, busy: busy === 'demo', onToggle: handleToggleDemoAlert } : undefined
+        }
       />
 
-      {/* Property Selector */}
-      <PropertySelector
-        properties={properties}
-        selectedPropertyId={selectedPropertyId}
-        onSelectProperty={setSelectedPropertyId}
-      />
+      <PropertySelector properties={properties} selectedId={property.id} now={now} onSelect={setSelectedId} />
 
-      {/* Main Command Dashboard with Fault Boundary */}
       <ErrorBoundary>
-        <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-6 space-y-6">
-          {/* Active Plot Summary Banner */}
-          <PlotBanner property={activeProperty} />
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+          <PlotBanner property={property} now={now} />
 
-          {/* Primary Row: Visual 4G Monitoring + Monthly In-Person Human Audits */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <PlotVisualCard
-              cameraPod={activeProperty.cameraPod}
-              surveyNumber={activeProperty.surveyNumber}
-            />
+            <PlotVisualCard key={`camera-${property.id}`} property={property} now={now} />
             <FieldInspectionCard
-              inspection={activeProperty.latestInspection}
-              onRequestVisit={() => setIsInspectionModalOpen(true)}
-              surveyNumber={activeProperty.surveyNumber}
+              key={`inspection-${property.id}`}
+              property={property}
+              now={now}
+              onRequestVisit={() => openModal('inspection')}
             />
           </div>
 
-          {/* Secondary Row: State Land Registry Watch + Legal Retainer */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <RevenueWatchCard
-              registry={activeProperty.revenueRegistry}
-              onVerifyNow={handleVerifyRegistry}
+              revenue={property.revenue}
+              now={now}
+              checking={busy === 'registry'}
+              onCheckNow={handleCheckRegistry}
             />
             <LegalActionCard
-              legalRetainer={activeProperty.legalRetainer}
-              onOpenCaveatModal={() => setIsCaveatModalOpen(true)}
-              onRetainLawyer={handleRetainLawyer}
-              onDownloadDossier={() => setIsDossierOpen(true)}
+              legal={property.legal}
+              now={now}
+              requesting={busy === 'caveat'}
+              onOpenDraft={() => openModal('caveat')}
+              onRequestRenewal={handleRequestCaveatRenewal}
+              onOpenDossier={() => openModal('dossier')}
             />
           </div>
 
-          {/* Chronological Audit Log */}
-          <RecentActivityFeed activities={activeProperty.recentActivity} />
+          <RecentActivityFeed activities={property.activity} now={now} />
         </main>
       </ErrorBoundary>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white py-6 px-6 text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-900">PARIDHI (परिधि)</span>
-            <span>•</span>
-            <span>Remote Vacant Land Security & Verified Title Protection</span>
-          </div>
-          <div className="text-slate-400 font-mono text-[11px]">
-            Operating across Telangana (Dharani), Karnataka (Bhoomi), Punjab (Jamabandi) & NCR
-          </div>
+      <footer className="border-t border-slate-200 bg-white py-5 px-4 sm:px-6 text-xs text-slate-500">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <span>
+            <span className="font-semibold text-slate-900">Paridhi (परिधि)</span> · Remote protection for vacant land in India
+          </span>
+          <span className="text-slate-400">
+            Not legal advice. Caveats and objections are filed by your advocate.
+          </span>
         </div>
       </footer>
 
-      {/* Modals */}
       <RequestInspectionModal
-        property={activeProperty}
-        isOpen={isInspectionModalOpen}
-        onClose={() => setIsInspectionModalOpen(false)}
+        property={property}
+        open={modal === 'inspection'}
+        onClose={closeModal}
         onSubmit={handleRequestInspection}
       />
+      <LegalCaveatModal property={property} now={now} open={modal === 'caveat'} onClose={closeModal} />
+      <DossierModal property={property} now={now} open={modal === 'dossier'} onClose={closeModal} />
+      <HowItWorksModal open={modal === 'how-it-works'} onClose={closeModal} />
 
-      <LegalCaveatModal
-        property={activeProperty}
-        isOpen={isCaveatModalOpen}
-        onClose={() => setIsCaveatModalOpen(false)}
-      />
-
-      <DossierModal
-        property={activeProperty}
-        isOpen={isDossierOpen}
-        onClose={() => setIsDossierOpen(false)}
-      />
-
-      <HowItWorksModal
-        isOpen={isHowItWorksOpen}
-        onClose={() => setIsHowItWorksOpen(false)}
-      />
-
-      {/* Floating System Toast */}
-      <Toast toast={toast} onClose={() => setToast(null)} />
+      <Toast toast={toast} onClose={closeToast} />
     </div>
   );
-};
-
-export default App;
+}

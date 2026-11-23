@@ -1,65 +1,59 @@
-import React from 'react';
-import type { PropertyRecord } from '../types';
+import { getPropertyAlerts, getPropertyStatus, type PropertyStatus } from '@shared/domain';
+import type { PropertyRecord } from '@shared/types';
+import { formatCrore } from '../format';
+import { StatusPill } from './StatusPill';
 
 interface PropertySelectorProps {
   properties: PropertyRecord[];
-  selectedPropertyId: string;
-  onSelectProperty: (id: string) => void;
+  selectedId: string;
+  now: Date;
+  onSelect: (id: string) => void;
 }
 
-export const PropertySelector: React.FC<PropertySelectorProps> = ({
-  properties,
-  selectedPropertyId,
-  onSelectProperty
-}) => {
+export function PropertySelector({ properties, selectedId, now, onSelect }: PropertySelectorProps) {
+  const totalValue = properties.reduce((sum, p) => sum + p.marketValuationINR, 0);
+  const stateCount = new Set(properties.map((p) => p.location.state)).size;
+
   return (
-    <div className="bg-white border-b border-slate-200/80 px-6 py-2.5">
+    <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-2.5">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
-          <span className="font-semibold text-slate-800 tracking-tight">Portfolio Holdings</span>
-          <span className="font-mono text-[11px] text-slate-400">Total Asset Base: ₹13.80 Cr across 3 States</span>
+          <span className="font-semibold text-slate-800 tracking-tight">
+            Your plots <span className="font-normal text-slate-400">({properties.length})</span>
+          </span>
+          <span className="font-mono text-[11px] text-slate-400">
+            {formatCrore(totalValue)} across {stateCount} state{stateCount === 1 ? '' : 's'} (owner's estimate)
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-          {properties.map((prop) => {
-            const isSelected = prop.id === selectedPropertyId;
-            const isAlert = prop.status !== 'ALL_CLEAR';
-
+        <div className="flex gap-2.5 overflow-x-auto pb-1 md:grid md:grid-cols-3 md:overflow-visible md:pb-0">
+          {properties.map((property) => {
+            const selected = property.id === selectedId;
+            const status: PropertyStatus = getPropertyStatus(getPropertyAlerts(property, now));
             return (
               <button
-                key={prop.id}
-                onClick={() => onSelectProperty(prop.id)}
-                className={`text-left rounded-lg p-3 border transition-all cursor-pointer relative ${
-                  isSelected
-                    ? 'bg-slate-50 border-slate-900 ring-1 ring-slate-900/10'
-                    : 'bg-white border-slate-200/90 hover:border-slate-300 hover:bg-slate-50/40'
+                key={property.id}
+                type="button"
+                onClick={() => onSelect(property.id)}
+                aria-pressed={selected}
+                className={`text-left rounded-lg p-3 border transition-colors cursor-pointer shrink-0 w-64 md:w-auto ${
+                  selected
+                    ? 'bg-slate-50 border-slate-900'
+                    : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/40'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <div className="font-semibold text-slate-900 text-xs tracking-tight truncate">
-                    {prop.name}
-                  </div>
-                  <span
-                    className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-medium shrink-0 flex items-center gap-1 ${
-                      isAlert
-                        ? 'bg-amber-50 text-amber-800 border border-amber-200'
-                        : 'bg-emerald-50 text-emerald-800 border border-emerald-200/60'
-                    }`}
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full ${isAlert ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
-                    {isAlert ? 'Attention' : 'Clean'}
-                  </span>
+                  <div className="font-semibold text-slate-900 text-xs tracking-tight truncate">{property.name}</div>
+                  <StatusPill status={status} compact />
                 </div>
-
-                <div className="flex items-center justify-between text-[11px] text-slate-500">
-                  <span className="truncate">{prop.location.cityNear}</span>
+                <div className="flex items-center justify-between text-[11px] text-slate-500 gap-2">
+                  <span className="truncate">{property.location.cityNear}</span>
                   <span className="font-mono text-slate-900 font-semibold shrink-0">
-                    ₹{(prop.marketValuationINR / 10000000).toFixed(2)} Cr
+                    {formatCrore(property.marketValuationINR)}
                   </span>
                 </div>
-
                 <div className="text-[10px] font-mono text-slate-400 mt-0.5 truncate">
-                  {prop.surveyNumber} · {prop.plotSizeDisplay}
+                  {property.surveyNumber} · {property.plotSizeDisplay}
                 </div>
               </button>
             );
@@ -68,4 +62,4 @@ export const PropertySelector: React.FC<PropertySelectorProps> = ({
       </div>
     </div>
   );
-};
+}

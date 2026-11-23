@@ -1,142 +1,117 @@
-import React, { useEffect } from 'react';
-import type { PropertyRecord } from '../types';
-import { X, Scale, CheckCircle2, Printer } from 'lucide-react';
+import { Printer, Scale } from 'lucide-react';
+import { CAVEAT_VALIDITY_DAYS, getCaveatStatus } from '@shared/domain';
+import type { PropertyRecord } from '@shared/types';
+import { formatDate } from '../format';
+import { Modal } from './Modal';
 
 interface LegalCaveatModalProps {
   property: PropertyRecord;
-  isOpen: boolean;
+  now: Date;
+  open: boolean;
   onClose: () => void;
 }
 
-export const LegalCaveatModal: React.FC<LegalCaveatModalProps> = ({
-  property,
-  isOpen,
-  onClose
-}) => {
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
+export function LegalCaveatModal({ property, now, open, onClose }: LegalCaveatModalProps) {
+  const { owner, legal, location, revenue } = property;
+  const caveat = getCaveatStatus(legal, now);
+  const court = legal.caveat?.court ?? '[civil court with jurisdiction over the property]';
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-slate-950/60 flex items-center justify-center p-4"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="legal-caveat-title"
-    >
-      <div
-        className="bg-white rounded-lg border border-slate-200/90 shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-5 py-3.5 border-b border-slate-200/80 flex items-center justify-between bg-slate-50/60">
-          <div className="flex items-center gap-2">
-            <Scale className="w-4 h-4 text-slate-700 shrink-0" />
-            <h3 id="legal-caveat-title" className="font-bold text-slate-900 text-sm tracking-tight">
-              Section 148A CPC Statutory Caveat Petition (90-Day Defense)
-            </h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
-            aria-label="Close dialog"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="p-6 overflow-y-auto space-y-4 font-serif text-slate-800 text-xs leading-relaxed bg-[#fdfdfd]">
-          <div className="text-center border-b border-slate-200 pb-4 not-italic">
-            <div className="font-bold uppercase tracking-wider text-slate-900 text-sm font-sans">
-              In the Court of the Senior Civil Judge / Tahsildar & Sub-Registrar
-            </div>
-            <div className="text-slate-600 font-sans mt-0.5">
-              At {property.location.mandalTaluk}, {property.location.district}, {property.location.state}
-            </div>
-            <div className="font-mono text-slate-500 font-sans text-[11px] mt-1">
-              Caveat Petition No. CP-{property.surveyNumber.replace(/[^a-zA-Z0-9]/g, '')}-2026 under Section 148A of the Code of Civil Procedure, 1908
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div>
-              <span className="font-sans font-bold">CAVEATOR:</span>{' '}
-              <span className="font-bold">{property.owner.name}</span>, Residing at {property.owner.overseasCity}, {property.owner.overseasCountry}. Represented through duly appointed Advocate on Record: <strong>{property.legalRetainer.advocateName}</strong> (Enrollment No. {property.legalRetainer.barCouncilNumber}).
-            </div>
-
-            <div className="text-center font-sans font-bold py-1">
-              — VERSUS —
-            </div>
-
-            <div>
-              <span className="font-sans font-bold">ANY UNKNOWN PERSONS / INTENDING ENCROACHERS:</span>{' '}
-              Any third party, builder, or prospective applicant seeking ex-parte title mutation, patta transfer, boundary amendment, or interim stay in respect of the Schedule Property.
-            </div>
-
-            <div className="pt-2 font-sans font-bold uppercase tracking-wide border-t border-slate-200 text-slate-900">
-              Petition for Caveat under Section 148A, C.P.C.
-            </div>
-
-            <p>
-              1. The Caveator is the sole, absolute, and unencumbered registered owner and title holder of the agricultural/commercial land bearing <strong>{property.surveyNumber}</strong>, admeasuring {property.plotSizeDisplay}, situated at Village {property.location.village}, Mandal {property.location.mandalTaluk}, District {property.location.district}, State of {property.location.state} (hereinafter referred to as the <em>"Schedule Property"</em>).
-            </p>
-
-            <p>
-              2. The Caveator has reason to apprehend that certain unscrupulous local land-grabbing elements or unauthorized third parties may institute frivolous suits, applications, or mutation requests seeking an ex-parte interim injunction, boundary alteration, or fraudulent revenue entry without due notice.
-            </p>
-
-            <p>
-              3. The Caveator respectfully submits that no adverse order, ex-parte injunction, revenue mutation, or administrative record alteration be granted or passed in respect of the Schedule Property without serving a formal statutory notice upon the Caveator's counsel.
-            </p>
-
-            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 font-sans not-italic text-[11px] space-y-1">
-              <div className="font-semibold text-slate-900">Schedule of Property:</div>
-              <div>• Survey / Khasra Number: {property.surveyNumber}</div>
-              <div>• Total Extent: {property.plotSizeDisplay}</div>
-              <div>• Khata Number: {property.revenueRegistry.khataNumber}</div>
-              <div>• Registered Pattadar: {property.revenueRegistry.pattadarName}</div>
-              <div>• Boundaries: North: Approach Road; South: Sy 413; East: Canal Feeder; West: Sy 411</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="px-5 py-3.5 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs">
-            <span className="flex items-center gap-1.5 text-emerald-800 font-medium">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Section 148A(5) CPC 90-Day Protection Active</span>
-            </span>
-            <span className="text-slate-300">|</span>
-            <span className="font-mono text-slate-600 font-semibold text-[11px]">
-              {property.legalRetainer.daysRemaining ?? 64} Days Remaining (Lodged {property.legalRetainer.caveatLodgedDate || 'Oct 28, 2026'})
-            </span>
-          </div>
-
+    <Modal
+      open={open}
+      onClose={onClose}
+      size="lg"
+      icon={<Scale className="w-4 h-4 text-slate-700 shrink-0" />}
+      title="Caveat under Section 148A CPC: draft"
+      footer={
+        <>
+          <span className="text-xs text-slate-600">
+            {legal.caveat && caveat.expiresOn
+              ? `Current caveat lodged ${formatDate(legal.caveat.lodgedOn)}; ${
+                  caveat.state === 'EXPIRED' ? 'lapsed' : 'lapses'
+                } ${formatDate(caveat.expiresOn)} (${CAVEAT_VALIDITY_DAYS} days).`
+              : 'No caveat on file.'}
+          </span>
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() => window.print()}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-1.5 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium flex items-center gap-1.5 cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Print Draft</span>
+              Print draft
             </button>
             <button
+              type="button"
               onClick={onClose}
-              className="px-4 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium cursor-pointer"
+              className="px-4 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium cursor-pointer"
             >
               Close
             </button>
           </div>
+        </>
+      }
+    >
+      <div className="p-6 space-y-4 text-slate-800 text-xs leading-relaxed">
+        <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900 text-[11px]">
+          Draft for your advocate to review and adapt. It has not been filed. The advocate decides the court, the
+          parties to be served and the final wording.
+        </div>
+
+        <div className="text-center border-b border-slate-200 pb-4 font-serif">
+          <div className="font-bold uppercase tracking-wide text-slate-900 text-sm">In the court of the {court}</div>
+          <div className="text-slate-600 mt-0.5">
+            {location.district} district, {location.state}
+          </div>
+          <div className="text-slate-500 text-[11px] mt-1">Caveat under Section 148A of the Code of Civil Procedure, 1908</div>
+        </div>
+
+        <div className="space-y-3 font-serif">
+          <p>
+            <span className="font-sans font-bold">Caveator:</span> {owner.name}, residing at {owner.overseasCity},{' '}
+            {owner.overseasCountry}, through counsel {legal.advocateName} (enrolment no. {legal.enrolmentNumber}).
+          </p>
+          <p>
+            <span className="font-sans font-bold">Persons expected to apply:</span> [to be named by the advocate. Section
+            148A(2) requires notice of this caveat to be served on them by registered post.]
+          </p>
+
+          <ol className="list-decimal pl-5 space-y-2">
+            <li>
+              The caveator is shown as owner of the property described in the schedule below in the {revenue.portalName}{' '}
+              record ({revenue.accountLabel} {revenue.accountNumber}, recorded owner: {revenue.recordedOwner}).
+            </li>
+            <li>
+              The caveator apprehends that a suit or application concerning the schedule property may be instituted,
+              including an application for an interim injunction or other interim order.
+            </li>
+            <li>
+              The caveator claims the right to appear before this court on the hearing of any such application and
+              requests that no order be passed on it without notice to the caveator through the counsel named above.
+            </li>
+            <li>
+              The caveator undertakes to serve notice of this caveat on the persons expected to apply, as required by
+              Section 148A(2).
+            </li>
+          </ol>
+
+          <div className="bg-slate-50 p-3 rounded border border-slate-200 font-sans text-[11px] space-y-1">
+            <div className="font-semibold text-slate-900">Schedule of property</div>
+            <div>Survey number: {property.surveyNumber}</div>
+            <div>Extent: {property.plotSizeDisplay}</div>
+            <div>
+              Location: {location.village} village, {location.mandalTaluk}, {location.district} district, {location.state}
+            </div>
+            <div>
+              {revenue.accountLabel}: {revenue.accountNumber}
+            </div>
+            <div>
+              Boundaries: North: {location.boundaries.north}; East: {location.boundaries.east}; South:{' '}
+              {location.boundaries.south}; West: {location.boundaries.west}
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
-};
+}

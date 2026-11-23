@@ -36,25 +36,35 @@ Paridhi deliberately avoids proprietary, hard-to-maintain custom silicon in favo
 
 A major challenge for solar security in India is the annual monsoon season (June to September), where continuous rain and cloud cover can persist for 5 to 10 consecutive days.
 
-### Power Budget & Duty-Cycle Calculus
-- **Quiescent Sleep Mode:** During normal conditions, the camera rests in low-power standby drawing just **0.25 Watts** ($20.8\text{ mA}$ at $12\text{V}$).
-- **Active Capture Mode:** Wakes for scheduled snapshots and motion events, drawing **3.8 Watts** ($316\text{ mA}$ at $12\text{V}$) for 15 seconds per event.
-- **Daily Operational Profile:**
-  - 23.5 hours in quiescent sleep: $0.25\,\text{W} \times 23.5\,\text{h} = 5.875\,\text{Wh}$
-  - 0.5 hours active capture (scheduled snapshots + 20 motion triggers): $3.8\,\text{W} \times 0.5\,\text{h} = 1.9\,\text{Wh}$
-  - Total Daily Energy Consumption: $\approx \mathbf{7.78\,\text{Wh / day}}$
+### Power budget
 
-### Battery Autonomy Calculation
-$$\text{Usable Battery Energy} = 12.8\,\text{V} \times 20\,\text{Ah} \times 0.85\,\text{DOD} = \mathbf{217.6\,\text{Wh}}$$
-$$\text{Autonomy Duration} = \frac{217.6\,\text{Wh}}{7.78\,\text{Wh / day}} \approx \mathbf{27.9\text{ Days of Continuous Off-Grid Run}}$$
+The figures below are design targets. Measure the chosen camera's real draw, especially the 4G modem, before
+committing to an autonomy figure.
 
-Even during the worst monsoon storms with 80% loss of solar efficiency, the system operates completely uninterrupted.
+| Load | Assumption | Energy per day |
+| :--- | :--- | ---: |
+| Camera standby | 0.25 W × 23.5 h | 5.9 Wh |
+| Captures (scheduled snapshots + about 20 motion clips) | 3.8 W × 0.5 h | 1.9 Wh |
+| 4G modem staying registered and sending a heartbeat every 60 s | about 0.7 W average | 16.8 Wh |
+| **Total (conservative)** | | **about 25 Wh** |
+
+The modem is the largest load. A camera that sleeps its modem between uploads uses far less, but then a 60-second
+heartbeat is not possible; the heartbeat interval is a trade-off between battery life and how quickly a cut camera is
+noticed.
+
+### Autonomy without sun
+
+$$\text{Usable energy} = 12.8\,\text{V} \times 20\,\text{Ah} \times 0.85 = 217.6\,\text{Wh}$$
+$$\text{Autonomy} = \frac{217.6\,\text{Wh}}{25\,\text{Wh/day}} \approx 8.7\text{ days}$$
+
+That covers about a week of heavy monsoon cloud with no charging at all. Overcast days still deliver some charge, so
+real autonomy is usually longer, but plan for the conservative figure.
 
 ### Battery Chemistry: Why LiFePO4?
 Standard consumer cameras use Lithium-ion NMC (Nickel Manganese Cobalt) cells, which degrade rapidly above 45°C and present serious fire and explosion risks in direct Indian sunlight. Paridhi exclusively mandates **Lithium Iron Phosphate ($\mathrm{LiFePO}_4$)**:
 - Thermal stability up to **60°C ambient** ($270^\circ\text{C}$ thermal runaway threshold).
 - Rated for **3,500+ full charge/discharge cycles** (over 9 years of daily cycling).
-- Non-combustible, non-toxic chemistry safe for unattended outdoor deployment.
+- Much more thermally stable than NMC cells, which matters for unattended outdoor use in Indian summers.
 
 ---
 
@@ -84,5 +94,7 @@ The on-site device sends a lightweight ping to the Paridhi cloud every 60 second
 
 ### 6. Deterrent Legal Warning Board
 A prominent reflective metal board is fixed at eye level:
-> **"WARNING: 24/7 Cloud Surveillance & Legal Boundary Monitoring by Paridhi Technologies. All footage is continuously uploaded to remote legal servers. Any trespass, boundary stone shifting, or property damage is a cognizable criminal offense under Sections 324 & 303 of the Bharatiya Nyaya Sanhita (BNS)."**
-In Indian rural and suburban land administration, formal legal signage backed by an active camera is the single most effective psychological deterrent against opportunistic encroachment.
+> **"NOTICE: This land is monitored by camera. Footage is uploaded off-site. Trespass and damage to boundary markers or equipment will be reported to the police."**
+>
+> Draft wording only. Have the local advocate approve the final text and any statutory references (for example, criminal trespass is Section 329 of the Bharatiya Nyaya Sanhita, 2023), and add the local language.
+A visible notice backed by a working camera is meant to deter opportunistic encroachment; how well it works should be measured in the pilot.

@@ -1,140 +1,108 @@
-import React, { useState, useEffect } from 'react';
-import type { PropertyRecord } from '../types';
-import { X, UserCheck, ShieldCheck, Send } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
+import { Send, UserCheck } from 'lucide-react';
+import type { PropertyRecord } from '@shared/types';
+import { errorMessage } from '../api';
+import { Modal } from './Modal';
+
+const MAX_NOTES = 500;
 
 interface RequestInspectionModalProps {
   property: PropertyRecord;
-  isOpen: boolean;
+  open: boolean;
   onClose: () => void;
-  onSubmit: (notes: string) => void;
+  onSubmit: (notes: string) => Promise<void>;
 }
 
-export const RequestInspectionModal: React.FC<RequestInspectionModalProps> = ({
-  property,
-  isOpen,
-  onClose,
-  onSubmit
-}) => {
+export function RequestInspectionModal({ property, open, onClose, onSubmit }: RequestInspectionModalProps) {
   const [notes, setNotes] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  const close = () => {
+    setError(null);
+    onClose();
+  };
 
-  if (!isOpen) return null;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setTimeout(() => {
-      onSubmit(notes || 'Owner requested priority verification of boundary stones.');
-      setIsSubmitting(false);
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      await onSubmit(notes.trim());
+      setNotes('');
       onClose();
-    }, 600);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-slate-950/60 flex items-center justify-center p-4"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="request-inspection-title"
+    <Modal
+      open={open}
+      onClose={close}
+      size="md"
+      icon={<UserCheck className="w-4 h-4 text-slate-700 shrink-0" />}
+      title="Request an extra inspection"
     >
-      <div
-        className="bg-white rounded-lg border border-slate-200/90 shadow-2xl max-w-lg w-full overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-5 py-3.5 border-b border-slate-200/80 flex items-center justify-between bg-slate-50/60">
-          <div className="flex items-center gap-2">
-            <UserCheck className="w-4 h-4 text-slate-700 shrink-0" />
-            <h3 id="request-inspection-title" className="font-bold text-slate-900 text-sm tracking-tight">
-              Dispatch On-Demand Physical Inspection
-            </h3>
+      <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
+        <div className="bg-slate-50 rounded p-3 border border-slate-200 text-slate-700">
+          <div className="font-semibold text-slate-900">
+            {property.name} ({property.surveyNumber})
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
-            aria-label="Close dialog"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="text-slate-500">
+            {property.location.village}, {property.location.mandalTaluk}, {property.location.district}
+          </div>
+          <div className="mt-1.5 text-slate-600">
+            Inspector: <span className="font-medium text-slate-900">{property.latestInspection.inspectorName}</span>{' '}
+            <span className="font-mono text-slate-400">({property.latestInspection.inspectorId})</span>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 text-xs text-slate-700">
-            <div className="font-semibold text-slate-900 mb-0.5">
-              {property.name} ({property.surveyNumber})
-            </div>
-            <div className="text-slate-500">
-              {property.location.village}, {property.location.mandalTaluk}, {property.location.district}
-            </div>
+        <div className="space-y-1.5">
+          <label htmlFor="inspection-notes" className="font-semibold text-slate-800">
+            What should the inspector look at? <span className="font-normal text-slate-400">(optional)</span>
+          </label>
+          <textarea
+            id="inspection-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            maxLength={MAX_NOTES}
+            placeholder="e.g. A relative heard someone was asking about the plot. Please check the north-west peg and speak to the neighbours."
+            rows={4}
+            className="w-full rounded border border-slate-200 p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
+          />
+          <div className="text-right text-[10px] text-slate-400 font-mono">
+            {notes.length}/{MAX_NOTES}
           </div>
+        </div>
 
-          <div className="space-y-1.5 text-xs">
-            <label className="font-semibold text-slate-800">
-              Assigned Field Inspector
-            </label>
-            <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 bg-white">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                <span className="font-medium text-slate-900">
-                  {property.latestInspection.inspectorName}
-                </span>
-                <span className="text-[10px] font-mono text-slate-400">
-                  ({property.latestInspection.inspectorId})
-                </span>
-              </div>
-              <span className="text-slate-500 text-[11px]">SLA: &lt; 48 Hours</span>
-            </div>
-          </div>
+        <p className="text-slate-500 leading-relaxed">
+          The inspector walks the boundary, checks each corner peg, talks to neighbours and uploads geotagged photos.
+          The target is a visit within 48 hours; weather and access can delay it.
+        </p>
 
-          <div className="space-y-1.5 text-xs">
-            <label className="font-semibold text-slate-800">
-              Specific Instructions or Focus Areas
-            </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Please verify North-West boundary stone peg #2, take extra photos of neighbor boundary wall, speak with village sarpanch / caretaker."
-              rows={3}
-              className="w-full rounded-lg border border-slate-200 p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
-            />
-          </div>
+        {error && <div className="rounded border border-red-200 bg-red-50 text-red-800 px-3 py-2">{error}</div>}
 
-          <div className="p-3 rounded-lg bg-blue-50/70 border border-blue-200/80 text-xs text-blue-900 flex items-start gap-2">
-            <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-            <div className="leading-relaxed">
-              <span className="font-semibold">Inspection Protocol:</span> Inspector will conduct in-person physical survey, inspect all 4 corner boundary stones, interview adjacent landowners, take 360° geotagged photos, and upload an official signed report to your dashboard.
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>{isSubmitting ? 'Dispatching...' : 'Dispatch Field Agent'}</span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={close}
+            className="px-4 py-2 rounded font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="px-4 py-2 rounded font-semibold bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <Send className="w-3.5 h-3.5" />
+            {submitting ? 'Sending…' : 'Send request'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
-};
+}

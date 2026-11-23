@@ -1,418 +1,361 @@
-import express, { Request, Response } from 'express';
-import cors from 'cors';
+import crypto from 'node:crypto';
 import path from 'node:path';
-import fs from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { mockProperties } from './db.js';
-import { EvidenceVault } from './crypto/evidenceVault.js';
-import { PropertyRecord, ActivityEvent, FieldInspectionReport } from './types.js';
+import express, { type NextFunction, type Request, type Response } from 'express';
+import { getPropertyAlerts, getPropertyStatus, getCaveatStatus, addDays } from '../../shared/domain.js';
+import type {
+  ActivityEvent,
+  Dossier,
+  EvidenceRecord,
+  HealthResponse,
+  PropertyRecord
+} from '../../shared/types.js';
+import type { AppConfig } from './config.js';
+import { EvidenceSigner, merkleRoot } from './evidence.js';
+import { createSeedProperties } from './seed.js';
+import { PropertyStore } from './store.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const MAX_ACTIVITY = 50;
+const MAX_TEXT = 500;
+const ON_DEMAND_VISIT_HOURS = 48;
 
-export const app = express();
+export const INCIDENT_TYPES = [
+  'MATERIAL_DUMPING',
+  'VEHICLE_ON_PLOT',
+  'NEW_STRUCTURE',
+  'BOUNDARY_PEG_MOVED',
+  'PERSON_ON_PLOT',
+  'CAMERA_TAMPER',
+  'OTHER'
+] as const;
+type IncidentType = (typeof INCIDENT_TYPES)[number];
 
-app.use(cors({ origin: '*' }));
-app.use(express.json());
+class HttpError extends Error {
+  readonly status: number;
 
-// In-memory state store
-export const properties: PropertyRecord[] = JSON.parse(JSON.stringify(mockProperties));
-
-// Optional WebSocket broadcaster hook (populated in server.ts for standalone daemon)
-let broadcaster: ((data: object) => void) | null = null;
-const sseClients = new Set<Response>();
-
-export function setBroadcaster(fn: (data: object) => void) {
-  broadcaster = fn;
-}
-
-export function broadcast(data: object) {
-  if (broadcaster) {
-    try {
-      broadcaster(data);
-    } catch {
-      // Ignore broadcast errors in serverless contexts
-    }
-  }
-  const sseData = `data: ${JSON.stringify(data)}\n\n`;
-  for (const client of sseClients) {
-    try {
-      client.write(sseData);
-    } catch {
-      sseClients.delete(client);
-    }
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
   }
 }
 
-// Background simulation ticker for telemetry updates
-export function runSimulationTick() {
-  for (const property of properties) {
-    // Subtle float charge variation
-    if (property.cameraPod.online) {
-      property.cameraPod.batteryPercentage = Math.min(
-        100,
-        Math.max(82, property.cameraPod.batteryPercentage + (Math.random() > 0.5 ? 0.2 : -0.2))
-      );
-    }
+function readText(body: unknown, field: string, { required = false, max = MAX_TEXT } = {}): string | undefined {
+  const value = (body as Record<string, unknown> | undefined)?.[field];
+  if (value === undefined || value === null || value === '') {
+    if (required) throw new HttpError(400, `"${field}" is required`);
+    return undefined;
   }
-  broadcast({
-    type: 'TELEMETRY_BATCH_UPDATE',
-    properties: properties.map((p) => ({
-      id: p.id,
-      cameraPod: p.cameraPod,
-      revenueRegistry: p.revenueRegistry
-    }))
-  });
+  if (typeof value !== 'string') throw new HttpError(400, `"${field}" must be a string`);
+  const trimmed = value.trim();
+  if (required && trimmed === '') throw new HttpError(400, `"${field}" is required`);
+  if (trimmed.length > max) throw new HttpError(400, `"${field}" must be at most ${max} characters`);
+  return trimmed || undefined;
 }
 
-/* ==========================================================================
-   REST API Router
-   ========================================================================== */
+function safeEqual(a: string, b: string): boolean {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
 
-const apiRouter = express.Router();
+export interface CreateAppOptions {
+  /** Directory with the built web client to serve for non-API routes (standalone server only). */
+  staticDir?: string;
+}
 
-apiRouter.get('/health', (req: Request, res: Response) => {
-  res.json({
-    status: 'OPTIMAL',
-    platform: 'Paridhi Remote Land Protection Core',
-    version: '2.1.0',
-    deployment: 'Vercel Serverless Ready',
-    activePropertiesCount: properties.length,
-    camerasOnline: properties.filter((p) => p.cameraPod.online).length
-  });
-});
+export function createApp(config: AppConfig, options: CreateAppOptions = {}) {
+  const now = config.now ?? (() => new Date());
+  const store = new PropertyStore(() => createSeedProperties(now()));
+  const signer = new EvidenceSigner(config.signingKey);
 
-// Server-Sent Events (SSE) Real-Time Stream for Serverless & Proxied Environments
-apiRouter.get('/events', (req: Request, res: Response) => {
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders?.();
-  sseClients.add(res);
-
-  res.write(
-    `data: ${JSON.stringify({
-      type: 'INITIAL_STATE',
-      properties,
-      timestamp: new Date().toISOString()
-    })}\n\n`
-  );
-
-  req.on('close', () => {
-    sseClients.delete(res);
-  });
-});
-
-apiRouter.get('/properties', (req: Request, res: Response) => {
-  runSimulationTick();
-  res.json({ properties });
-});
-
-apiRouter.get('/properties/:id', (req: Request, res: Response) => {
-  const property = properties.find((p) => p.id === req.params.id);
-  if (!property) {
-    res.status(404).json({ error: 'Property not found' });
-    return;
-  }
-  res.json({ property });
-});
-
-// Request an On-Demand Physical Field Inspection
-apiRouter.post('/properties/:id/request-inspection', (req: Request, res: Response) => {
-  const property = properties.find((p) => p.id === req.params.id);
-  if (!property) {
-    res.status(404).json({ error: 'Property not found' });
-    return;
+  if (signer.ephemeral && !config.now) {
+    console.warn(
+      '[paridhi] No PARIDHI_SIGNING_KEY set: using a throwaway signing key. Signatures will not verify after a restart.'
+    );
   }
 
-  const notes = req.body?.notes || 'Owner requested priority verification of boundary stones.';
-  const scheduledDate = new Date(Date.now() + 1000 * 60 * 60 * 36).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  });
-
-  const newActivity: ActivityEvent = {
-    id: `act-${Date.now()}`,
-    timestamp: 'Just now',
-    category: 'INSPECTION',
-    title: 'On-Demand Field Inspection Dispatched',
-    description: `Assigned to senior field inspector ${property.latestInspection.inspectorName}. Scheduled arrival: ${scheduledDate}. Notes: "${notes}"`,
-    severity: 'INFO'
-  };
-
-  property.recentActivity.unshift(newActivity);
-  property.latestInspection.nextScheduledDate = scheduledDate;
-
-  broadcast({
-    type: 'INSPECTION_REQUESTED',
-    propertyId: property.id,
-    scheduledDate,
-    activity: newActivity
-  });
-
-  res.status(201).json({
-    success: true,
-    message: 'Field inspection successfully dispatched',
-    assignedInspector: property.latestInspection.inspectorName,
-    scheduledDate,
-    activity: newActivity
-  });
-});
-
-// Poll Official State Revenue Registry
-apiRouter.post('/properties/:id/poll-registry', (req: Request, res: Response) => {
-  const property = properties.find((p) => p.id === req.params.id);
-  if (!property) {
-    res.status(404).json({ error: 'Property not found' });
-    return;
+  function addActivity(property: PropertyRecord, event: Omit<ActivityEvent, 'id' | 'at'>): ActivityEvent {
+    const activity: ActivityEvent = { id: `act-${crypto.randomUUID()}`, at: now().toISOString(), ...event };
+    property.activity = [activity, ...property.activity].slice(0, MAX_ACTIVITY);
+    return activity;
   }
 
-  const nowFormatted = `Today, ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} IST (verified)`;
-  property.revenueRegistry.lastCheckedTimestamp = nowFormatted;
-  property.revenueRegistry.cleanTitle = true;
-  property.revenueRegistry.pendingMutationsCount = 0;
-  property.revenueRegistry.unauthorizedMutationDetected = false;
-
-  const newActivity: ActivityEvent = {
-    id: `act-${Date.now()}`,
-    timestamp: 'Just now',
-    category: 'REGISTRY',
-    title: `${property.revenueRegistry.portalName} Polled`,
-    description: `Official state land records verified. ${property.surveyNumber} is 100% clean with zero adverse claims or mutation applications.`,
-    severity: 'SUCCESS'
-  };
-
-  property.recentActivity.unshift(newActivity);
-
-  broadcast({
-    type: 'REGISTRY_POLLED',
-    propertyId: property.id,
-    revenueRegistry: property.revenueRegistry,
-    activity: newActivity
-  });
-
-  res.json({
-    success: true,
-    message: 'Official revenue registry audit completed',
-    revenueRegistry: property.revenueRegistry,
-    activity: newActivity
-  });
-});
-
-// Retain Local Revenue Advocate & Issue Section 148A CPC Caveat / Legal Notice
-apiRouter.post('/properties/:id/retain-lawyer', (req: Request, res: Response) => {
-  const property = properties.find((p) => p.id === req.params.id);
-  if (!property) {
-    res.status(404).json({ error: 'Property not found' });
-    return;
+  function propertyOf(res: Response): PropertyRecord {
+    return res.locals.property as PropertyRecord;
   }
 
-  const reason = req.body?.reason || 'Preventive statutory caveat renewal under Section 148A of the Code of Civil Procedure.';
-  const now = new Date();
-  const lodgedDateFormatted = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const expiryDate = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
-  const expiryFormatted = `${expiryDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} (Section 148A CPC 90-Day Limit)`;
+  const app = express();
+  app.disable('x-powered-by');
+  app.use(express.json({ limit: '16kb' }));
 
-  property.legalRetainer.standingCaveatActive = true;
-  property.legalRetainer.caveatLodgedDate = lodgedDateFormatted;
-  property.legalRetainer.caveatExpiryDate = expiryFormatted;
-  property.legalRetainer.daysRemaining = 90;
-  property.legalRetainer.renewalNoticeTriggered = false;
-  property.legalRetainer.statutoryNoticeStatus = 'CAVEAT_LODGED';
+  const api = express.Router();
 
-  const newActivity: ActivityEvent = {
-    id: `act-${Date.now()}`,
-    timestamp: 'Just now',
-    category: 'LEGAL',
-    title: `Section 148A CPC Caveat Lodged by ${property.legalRetainer.advocateName}`,
-    description: `Statutory 90-day caveat petition served on Tahsildar & Civil Court. Ex-parte orders legally barred. Valid until ${expiryFormatted}. Reason: ${reason}`,
-    severity: 'SUCCESS'
-  };
-
-  property.recentActivity.unshift(newActivity);
-
-  broadcast({
-    type: 'LEGAL_CAVEAT_LODGED',
-    propertyId: property.id,
-    legalRetainer: property.legalRetainer,
-    activity: newActivity
-  });
-
-  res.status(201).json({
-    success: true,
-    message: 'Statutory 90-day caveat successfully lodged with local authorities',
-    legalRetainer: property.legalRetainer,
-    activity: newActivity
-  });
-});
-
-// Trigger Edge Incident from Python Sentinel Edge Daemon / NPU Computer Vision
-apiRouter.post('/properties/:id/trigger-incident', (req: Request, res: Response) => {
-  const property = properties.find((p) => p.id === req.params.id);
-  if (!property) {
-    res.status(404).json({ error: 'Property not found' });
-    return;
-  }
-
-  const threatType = req.body?.threatType || 'UNSCHEDULED_PERIMETER_ANOMALY';
-  const customDescription = req.body?.customDescription || 'Edge Sentinel NPU flagged an unscheduled perimeter anomaly.';
-
-  property.status = 'ATTENTION_NEEDED';
-  property.statusBadgeText = `Attention Needed • ${threatType.replace(/_/g, ' ')}`;
-  property.cameraPod.timelapseDifferenceDetected = true;
-  property.cameraPod.timelapseNotes = customDescription;
-
-  const incidentPayload = JSON.stringify({
-    propertyId: property.id,
-    surveyNumber: property.surveyNumber,
-    threatType,
-    description: customDescription,
-    timestamp: new Date().toISOString()
-  });
-
-  const sha256 = EvidenceVault.computeSha256(incidentPayload);
-  const signature = EvidenceVault.signWithHsmKey(incidentPayload);
-
-  const newActivity: ActivityEvent = {
-    id: `act-${Date.now()}`,
-    timestamp: 'Just now',
-    category: 'CAMERA',
-    title: `Edge Sentinel Anomaly: ${threatType.replace(/_/g, ' ')}`,
-    description: `${customDescription} [BSA §63 Frame Hash: ${sha256.substring(0, 16)}...]`,
-    severity: 'ALERT'
-  };
-
-  property.recentActivity.unshift(newActivity);
-
-  const incidentRecord = {
-    id: `INC-${Date.now()}`,
-    propertyId: property.id,
-    threatType,
-    sha256Hash: sha256,
-    hardwareSignature: signature,
-    admissibilityNotice: 'Bharatiya Sakshya Adhiniyam, 2023 §63',
-    timestamp: new Date().toISOString()
-  };
-
-  broadcast({
-    type: 'PROPERTY_UPDATED',
-    property,
-    incident: incidentRecord
-  });
-
-  res.status(201).json({
-    success: true,
-    message: 'Edge incident successfully ingested into Evidence Vault',
-    incident: incidentRecord,
-    property
-  });
-});
-
-// Generate Complete Legal & Property Protection Dossier
-apiRouter.get('/properties/:id/dossier', (req: Request, res: Response) => {
-  const property = properties.find((p) => p.id === req.params.id);
-  if (!property) {
-    res.status(404).json({ error: 'Property not found' });
-    return;
-  }
-
-  const dossierPayload = JSON.stringify({
-    propertyId: property.id,
-    surveyNumber: property.surveyNumber,
-    owner: property.owner,
-    cadastre: property.location,
-    valuation: property.marketValuationINR,
-    cameraSnapshot: property.cameraPod.currentSnapshotUrl,
-    latestInspection: property.latestInspection,
-    revenueRegistry: property.revenueRegistry,
-    legalRetainer: property.legalRetainer,
-    generatedAt: new Date().toISOString()
-  });
-
-  const sha256Hash = EvidenceVault.computeSha256(dossierPayload);
-  const digitalSignature = EvidenceVault.signWithHsmKey(dossierPayload);
-
-  res.json({
-    dossierId: `PRD-DOSSIER-${property.id.toUpperCase()}-${Date.now()}`,
-    property,
-    cryptographicIntegrity: {
-      sha256Hash,
-      digitalSignature,
-      admissibilityFramework: 'Bharatiya Sakshya Adhiniyam, 2023 §63',
-      timestampUtc: new Date().toISOString()
+  api.param('id', (req, res, next, id: string) => {
+    const property = store.get(id);
+    if (!property) {
+      next(new HttpError(404, 'Property not found'));
+      return;
     }
-  });
-});
-
-// Simulate Incident / Perimeter Anomaly (for testing & interactive demo)
-apiRouter.post('/properties/:id/simulate-tamper', (req: Request, res: Response) => {
-  const property = properties.find((p) => p.id === req.params.id);
-  if (!property) {
-    res.status(404).json({ error: 'Property not found' });
-    return;
-  }
-
-  property.status = 'ATTENTION_NEEDED';
-  property.statusBadgeText = 'Attention Needed • Unscheduled Activity';
-  property.cameraPod.timelapseDifferenceDetected = true;
-  property.cameraPod.timelapseNotes = 'AI visual comparison flagged 35% pixel change: construction gravel deposited near North boundary stone.';
-
-  const newActivity: ActivityEvent = {
-    id: `act-${Date.now()}`,
-    timestamp: 'Just now',
-    category: 'CAMERA',
-    title: 'Visual Perimeter Anomaly Detected',
-    description: 'Weekly timelapse analysis detected anomalous material accumulation near boundary peg #2. Dispatched automated alert to owner and field inspector.',
-    severity: 'ALERT'
-  };
-
-  property.recentActivity.unshift(newActivity);
-
-  broadcast({
-    type: 'PROPERTY_UPDATED',
-    property
+    res.locals.property = property;
+    next();
   });
 
-  res.json({
-    success: true,
-    message: 'Perimeter anomaly simulated',
-    property
-  });
-});
-
-// Reset Property to Clean State
-apiRouter.post('/properties/:id/reset', (req: Request, res: Response) => {
-  const defaultProp = mockProperties.find((p) => p.id === req.params.id);
-  const propertyIndex = properties.findIndex((p) => p.id === req.params.id);
-  if (!defaultProp || propertyIndex === -1) {
-    res.status(404).json({ error: 'Property not found' });
-    return;
-  }
-
-  properties[propertyIndex] = JSON.parse(JSON.stringify(defaultProp));
-
-  broadcast({
-    type: 'PROPERTY_RESET',
-    property: properties[propertyIndex]
+  api.get('/health', (_req, res) => {
+    const body: HealthResponse = {
+      status: 'ok',
+      demoMode: config.demoMode,
+      deviceIngestEnabled: config.deviceToken !== null,
+      signingKey: { keyId: signer.keyId, ephemeral: signer.ephemeral }
+    };
+    res.json(body);
   });
 
-  res.json({
-    success: true,
-    message: 'Property state reset to pristine baseline',
-    property: properties[propertyIndex]
+  api.get('/evidence/public-key', (_req, res) => {
+    res.json({
+      keyId: signer.keyId,
+      algorithm: 'Ed25519',
+      publicKeyPem: signer.publicKeyPem,
+      ephemeral: signer.ephemeral
+    });
   });
-});
 
-app.use('/api', apiRouter);
+  api.get('/properties', (_req, res) => {
+    res.json({ properties: store.list() });
+  });
 
-// Static Web Serving (production build)
-const clientBuildPath = path.resolve(__dirname, '../../web/dist');
-if (fs.existsSync(clientBuildPath)) {
-  app.use(express.static(clientBuildPath));
-  app.get('*', (req: Request, res: Response) => {
-    if (!req.path.startsWith('/api')) {
-      res.sendFile(path.join(clientBuildPath, 'index.html'));
+  api.get('/properties/:id', (_req, res) => {
+    res.json({ property: propertyOf(res) });
+  });
+
+  // Owner asks for an extra visit by the field inspector.
+  api.post('/properties/:id/inspection-requests', (req, res) => {
+    const property = propertyOf(res);
+    const inspection = property.latestInspection;
+    const notes = readText(req.body, 'notes');
+    const current = now();
+
+    if (inspection.onDemandRequest && new Date(inspection.onDemandRequest.targetVisitBy) > current) {
+      throw new HttpError(409, 'An on-demand visit is already scheduled for this plot');
     }
+
+    inspection.onDemandRequest = {
+      requestedAt: current.toISOString(),
+      targetVisitBy: addDays(current.toISOString(), ON_DEMAND_VISIT_HOURS / 24),
+      notes: notes ?? ''
+    };
+    addActivity(property, {
+      category: 'INSPECTION',
+      title: 'On-demand inspection requested',
+      description: `Assigned to ${inspection.inspectorName}, with a target of a visit within ${ON_DEMAND_VISIT_HOURS} hours.${
+        notes ? ` Owner's note: "${notes}"` : ''
+      }`,
+      severity: 'INFO'
+    });
+    res.status(201).json({ property });
   });
+
+  // Re-check the land record. There is no portal integration yet, so this re-reads the
+  // stored record; it never clears flags that are already there.
+  api.post('/properties/:id/registry-checks', (_req, res) => {
+    const property = propertyOf(res);
+    const { revenue } = property;
+    revenue.lastCheckedAt = now().toISOString();
+
+    const flagged = revenue.flaggedMutations.length;
+    addActivity(
+      property,
+      flagged === 0
+        ? {
+            category: 'REGISTRY',
+            title: `${revenue.portalName} checked`,
+            description: `${revenue.accountLabel} ${revenue.accountNumber} still shows ${revenue.recordedOwner}. No new mutation applications.`,
+            severity: 'SUCCESS'
+          }
+        : {
+            category: 'REGISTRY',
+            title: `${revenue.portalName} checked: ${flagged} application${flagged === 1 ? '' : 's'} still flagged`,
+            description: revenue.flaggedMutations.map((m) => `${m.reference}: ${m.description}`).join(' · '),
+            severity: 'ALERT'
+          }
+    );
+    res.json({ property });
+  });
+
+  // Ask the retained advocate to file (or re-file) the caveat. Filing happens offline;
+  // the advocate confirms the new lodging date afterwards.
+  api.post('/properties/:id/caveat-renewals', (_req, res) => {
+    const property = propertyOf(res);
+    const { legal } = property;
+    const status = getCaveatStatus(legal, now());
+
+    if (status.renewalRequested) {
+      throw new HttpError(409, 'A caveat renewal has already been requested');
+    }
+
+    legal.renewalRequestedAt = now().toISOString();
+    addActivity(property, {
+      category: 'LEGAL',
+      title: legal.caveat ? 'Caveat renewal requested' : 'Caveat filing requested',
+      description: legal.caveat
+        ? `Sent to ${legal.advocateName}. A fresh caveat will be lodged in ${legal.caveat.court} before the current one lapses.`
+        : `Sent to ${legal.advocateName} to lodge a caveat in the civil court with jurisdiction over the plot.`,
+      severity: 'INFO'
+    });
+    res.status(201).json({ property });
+  });
+
+  // Camera devices report incidents here, authenticated with the shared device token.
+  api.post('/properties/:id/incidents', (req, res) => {
+    if (!config.deviceToken) {
+      throw new HttpError(503, 'Device ingest is disabled. Set PARIDHI_DEVICE_TOKEN to enable it.');
+    }
+    const auth = req.get('authorization') ?? '';
+    const token = auth.startsWith('Bearer ') ? auth.slice('Bearer '.length) : '';
+    if (!safeEqual(token, config.deviceToken)) {
+      throw new HttpError(401, 'Missing or invalid device token');
+    }
+
+    const property = propertyOf(res);
+    const type = readText(req.body, 'type', { required: true, max: 40 }) as IncidentType;
+    if (!INCIDENT_TYPES.includes(type)) {
+      throw new HttpError(400, `"type" must be one of ${INCIDENT_TYPES.join(', ')}`);
+    }
+    const description = readText(req.body, 'description', { required: true })!;
+    const snapshotSha256 = readText(req.body, 'snapshotSha256', { max: 64 })?.toLowerCase();
+    if (snapshotSha256 && !/^[0-9a-f]{64}$/.test(snapshotSha256)) {
+      throw new HttpError(400, '"snapshotSha256" must be a 64-character hex SHA-256');
+    }
+    const capturedAt = readText(req.body, 'capturedAt', { max: 40 });
+    if (capturedAt && Number.isNaN(Date.parse(capturedAt))) {
+      throw new HttpError(400, '"capturedAt" must be an ISO 8601 timestamp');
+    }
+
+    const receivedAt = now().toISOString();
+    const signed = signer.sign({
+      kind: 'CAMERA_INCIDENT',
+      propertyId: property.id,
+      surveyNumber: property.surveyNumber,
+      type,
+      description,
+      snapshotSha256: snapshotSha256 ?? null,
+      capturedAt: capturedAt ? new Date(capturedAt).toISOString() : null,
+      receivedAt
+    });
+    const evidence: EvidenceRecord = {
+      id: `EV-${crypto.randomUUID()}`,
+      propertyId: property.id,
+      kind: 'CAMERA_INCIDENT',
+      receivedAt,
+      ...signed
+    };
+    store.addEvidence(evidence);
+
+    property.camera.changeDetected = true;
+    property.camera.changeNotes = description;
+    if (type === 'CAMERA_TAMPER') property.camera.tamperSwitchNormal = false;
+    addActivity(property, {
+      category: 'CAMERA',
+      title: `Camera incident: ${type.replace(/_/g, ' ').toLowerCase()}`,
+      description: `${description} Evidence ${evidence.id.slice(0, 11)}… recorded with SHA-256 ${evidence.sha256.slice(0, 12)}….`,
+      severity: 'ALERT'
+    });
+    res.status(201).json({ evidence, property });
+  });
+
+  api.get('/properties/:id/evidence', (_req, res) => {
+    const records = store.listEvidence(propertyOf(res).id);
+    res.json({ records, merkleRoot: merkleRoot(records.map((r) => r.sha256)) });
+  });
+
+  // A signed snapshot of everything on file for the property, for the owner and their advocate.
+  api.get('/properties/:id/dossier', (_req, res) => {
+    const property = propertyOf(res);
+    const generatedAt = now().toISOString();
+    const evidence = store.listEvidence(property.id);
+    const evidenceMerkleRoot = merkleRoot(evidence.map((r) => r.sha256));
+    const alerts = getPropertyAlerts(property, now());
+
+    const signed = signer.sign({
+      kind: 'PROPERTY_DOSSIER',
+      generatedAt,
+      status: getPropertyStatus(alerts),
+      alerts,
+      property,
+      evidence: evidence.map((r) => ({ id: r.id, sha256: r.sha256 })),
+      evidenceMerkleRoot
+    });
+    const dossier: Dossier = {
+      id: `DOS-${property.id}-${generatedAt.replace(/[-:.TZ]/g, '').slice(0, 14)}`,
+      generatedAt,
+      evidenceCount: evidence.length,
+      evidenceMerkleRoot,
+      signingKeyEphemeral: signer.ephemeral,
+      ...signed
+    };
+    res.json({ dossier });
+  });
+
+  if (config.demoMode) {
+    const demo = express.Router();
+    demo.param('id', (req, res, next, id: string) => {
+      const property = store.get(id);
+      if (!property) {
+        next(new HttpError(404, 'Property not found'));
+        return;
+      }
+      res.locals.property = property;
+      next();
+    });
+
+    demo.post('/properties/:id/simulate-alert', (_req, res) => {
+      const property = propertyOf(res);
+      property.camera.changeDetected = true;
+      property.camera.changeNotes = 'Simulated: weekly comparison shows new gravel near the north boundary peg.';
+      addActivity(property, {
+        category: 'CAMERA',
+        title: 'Camera comparison flagged a change (simulated)',
+        description: 'Demo alert: new material near the north boundary peg. The owner and inspector would be notified.',
+        severity: 'ALERT'
+      });
+      res.json({ property });
+    });
+
+    demo.post('/properties/:id/reset', (_req, res) => {
+      res.json({ property: store.reset(propertyOf(res).id) });
+    });
+
+    api.use('/demo', demo);
+  }
+
+  app.use('/api', api);
+  app.use('/api', (_req, _res, next) => next(new HttpError(404, 'Not found')));
+
+  if (options.staticDir) {
+    const indexHtml = path.join(options.staticDir, 'index.html');
+    app.use(express.static(options.staticDir));
+    app.get('*', (_req, res) => res.sendFile(indexHtml));
+  }
+
+  app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+    if (res.headersSent) {
+      next(err);
+      return;
+    }
+    if (err instanceof HttpError) {
+      res.status(err.status).json({ error: err.message });
+      return;
+    }
+    const bodyError = err as { type?: string; status?: number };
+    if (bodyError.type === 'entity.parse.failed') {
+      res.status(400).json({ error: 'Request body is not valid JSON' });
+      return;
+    }
+    if (bodyError.type === 'entity.too.large') {
+      res.status(413).json({ error: 'Request body is too large' });
+      return;
+    }
+    console.error('[paridhi] Unhandled error', err);
+    res.status(500).json({ error: 'Internal server error' });
+  });
+
+  return app;
 }

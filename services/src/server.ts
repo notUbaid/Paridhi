@@ -1,57 +1,20 @@
-import path from 'node:path';
 import fs from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { WebSocket, WebSocketServer } from 'ws';
-import { app, properties, setBroadcaster, runSimulationTick } from './app.js';
+import { createApp } from './app.js';
+import { loadConfig } from './config.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const webDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../web/dist');
+const port = Number(process.env.PORT) || 4000;
+const config = loadConfig();
 
-const PORT = process.env.PORT || 4000;
-const WS_PORT = 4001;
+const app = createApp(config, { staticDir: fs.existsSync(webDist) ? webDist : undefined });
 
-/* ==========================================================================
-   WebSocket Real-time Broadcast Hub (Local Standalone Daemon)
-   ========================================================================== */
-
-const wss = new WebSocketServer({ port: WS_PORT });
-const clients = new Set<WebSocket>();
-
-wss.on('connection', (ws: WebSocket) => {
-  clients.add(ws);
-  ws.send(
-    JSON.stringify({
-      type: 'INITIAL_STATE',
-      properties
-    })
-  );
-
-  ws.on('close', () => {
-    clients.delete(ws);
-  });
-});
-
-setBroadcaster((data: object) => {
-  const msg = JSON.stringify(data);
-  for (const client of clients) {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(msg);
-    }
-  }
-});
-
-// Periodic background simulation loop
-setInterval(() => {
-  runSimulationTick();
-}, 3000);
-
-// Launch standalone HTTP server
-const webDistPath = path.resolve(__dirname, '../../web/dist');
-
-app.listen(PORT, () => {
-  console.log(`[PARIDHI-CORE] REST Engine active on http://localhost:${PORT}`);
-  console.log(`[PARIDHI-CORE] WebSocket Telemetry Hub active on ws://localhost:${WS_PORT}`);
-  if (fs.existsSync(webDistPath)) {
-    console.log(`[PARIDHI-CORE] Web Command Center delivered on http://localhost:${PORT}`);
+app.listen(port, () => {
+  console.log(`[paridhi] API on http://localhost:${port}/api (demo mode: ${config.demoMode ? 'on' : 'off'})`);
+  if (fs.existsSync(webDist)) {
+    console.log(`[paridhi] Web app on http://localhost:${port}`);
+  } else {
+    console.log('[paridhi] No web build found. Run "npm run build" or use "npm run dev:web" on port 3000.');
   }
 });

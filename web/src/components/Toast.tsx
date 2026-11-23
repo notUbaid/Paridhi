@@ -1,70 +1,47 @@
-import React, { useEffect } from 'react';
-import { CheckCircle2, Info, AlertTriangle, X } from 'lucide-react';
+import { useEffect } from 'react';
+import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react';
 
 export interface ToastNotification {
   id: string;
-  type: 'SUCCESS' | 'INFO' | 'ALERT';
+  type: 'SUCCESS' | 'INFO' | 'ALERT' | 'ERROR';
   title: string;
   message: string;
 }
 
-interface ToastProps {
-  toast: ToastNotification | null;
-  onClose: () => void;
-}
+const STYLES = {
+  SUCCESS: { icon: CheckCircle2, iconClass: 'text-emerald-600', border: 'border-emerald-300' },
+  INFO: { icon: Info, iconClass: 'text-slate-500', border: 'border-slate-300' },
+  ALERT: { icon: AlertTriangle, iconClass: 'text-amber-600', border: 'border-amber-300' },
+  ERROR: { icon: XCircle, iconClass: 'text-red-600', border: 'border-red-300' }
+};
 
-export const Toast: React.FC<ToastProps> = ({ toast, onClose }) => {
+export function Toast({ toast, onClose }: { toast: ToastNotification | null; onClose: () => void }) {
   useEffect(() => {
     if (!toast) return;
-    const timer = setTimeout(() => {
-      onClose();
-    }, 4000);
-    return () => clearTimeout(timer);
+    const timer = window.setTimeout(onClose, toast.type === 'ERROR' ? 8000 : 5000);
+    return () => window.clearTimeout(timer);
   }, [toast, onClose]);
 
   if (!toast) return null;
-
-  const getIcon = () => {
-    switch (toast.type) {
-      case 'SUCCESS':
-        return <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />;
-      case 'ALERT':
-        return <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />;
-      default:
-        return <Info className="w-4 h-4 text-blue-600 shrink-0" />;
-    }
-  };
-
-  const getBadgeStyle = () => {
-    switch (toast.type) {
-      case 'SUCCESS':
-        return 'border-emerald-300 bg-white text-slate-900';
-      case 'ALERT':
-        return 'border-amber-300 bg-white text-slate-900';
-      default:
-        return 'border-slate-300 bg-white text-slate-900';
-    }
-  };
+  const style = STYLES[toast.type];
+  const Icon = style.icon;
 
   return (
-    <aside
-      aria-label="Notification"
-      className="fixed bottom-6 right-6 z-50 max-w-sm w-full"
+    <div
+      role={toast.type === 'ERROR' || toast.type === 'ALERT' ? 'alert' : 'status'}
+      className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 sm:max-w-sm sm:w-full"
     >
-      <div className={`p-3.5 rounded-lg border shadow-xl ${getBadgeStyle()}`}>
+      <div className={`p-3.5 rounded-lg border bg-white shadow-xl ${style.border}`}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-2.5">
-            {getIcon()}
+            <Icon className={`w-4 h-4 shrink-0 ${style.iconClass}`} />
             <div>
-              <div className="text-xs font-bold leading-none mb-1 text-slate-900">
-                {toast.title}
-              </div>
-              <div className="text-[11px] text-slate-600 leading-relaxed">
-                {toast.message}
-              </div>
+              <div className="text-xs font-bold leading-none mb-1 text-slate-900">{toast.title}</div>
+              <div className="text-[11px] text-slate-600 leading-relaxed">{toast.message}</div>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="text-slate-400 hover:text-slate-700 p-0.5 rounded transition-colors cursor-pointer"
             aria-label="Dismiss notification"
@@ -73,6 +50,6 @@ export const Toast: React.FC<ToastProps> = ({ toast, onClose }) => {
           </button>
         </div>
       </div>
-    </aside>
+    </div>
   );
-};
+}

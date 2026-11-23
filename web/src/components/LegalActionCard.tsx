@@ -1,156 +1,144 @@
-import React, { useState } from 'react';
-import type { LegalRetainerInfo } from '../types';
-import {
-  Scale,
-  FileText,
-  Award,
-  Download,
-  AlertTriangle,
-  CheckCircle2
-} from 'lucide-react';
+import { AlertTriangle, FileCheck, FileText, Scale } from 'lucide-react';
+import { CAVEAT_VALIDITY_DAYS, getCaveatStatus } from '@shared/domain';
+import type { LegalRetainer } from '@shared/types';
+import { formatDate, formatRelative } from '../format';
 
 interface LegalActionCardProps {
-  legalRetainer: LegalRetainerInfo;
-  onOpenCaveatModal: () => void;
-  onRetainLawyer: () => void;
-  onDownloadDossier: () => void;
+  legal: LegalRetainer;
+  now: Date;
+  requesting: boolean;
+  onOpenDraft: () => void;
+  onRequestRenewal: () => void;
+  onOpenDossier: () => void;
 }
 
-export const LegalActionCard: React.FC<LegalActionCardProps> = ({
-  legalRetainer,
-  onOpenCaveatModal,
-  onRetainLawyer,
-  onDownloadDossier
-}) => {
-  const [isLodging, setIsLodging] = useState(false);
-  const isExpiringSoon = (legalRetainer.daysRemaining ?? 64) <= 15;
+export function LegalActionCard({
+  legal,
+  now,
+  requesting,
+  onOpenDraft,
+  onRequestRenewal,
+  onOpenDossier
+}: LegalActionCardProps) {
+  const caveat = getCaveatStatus(legal, now);
+  const warn = caveat.state === 'EXPIRING' || caveat.state === 'EXPIRED';
 
-  const handleRetain = () => {
-    setIsLodging(true);
-    onRetainLawyer();
-    setTimeout(() => {
-      setIsLodging(false);
-    }, 1500);
-  };
+  const badge =
+    caveat.state === 'NONE'
+      ? 'No caveat'
+      : caveat.state === 'EXPIRED'
+        ? 'Caveat lapsed'
+        : `${caveat.daysRemaining} days left`;
+
+  const actionLabel = caveat.renewalRequested
+    ? 'Renewal requested'
+    : legal.caveat
+      ? 'Ask advocate to renew'
+      : 'Ask advocate to file a caveat';
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200/90 overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col">
-      {/* Header */}
-      <div className="px-5 py-3 border-b border-slate-200/80 bg-slate-50/60 flex items-center justify-between gap-3">
+    <section className="bg-white rounded-lg border border-slate-200 overflow-hidden flex flex-col">
+      <div className="px-5 py-3 border-b border-slate-200 bg-slate-50/60 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Scale className="w-4 h-4 text-slate-700 shrink-0" />
-          <span className="font-semibold text-slate-900 text-sm tracking-tight">
-            Judicial Injunction Defense
-          </span>
-          <span className="text-[11px] font-mono text-purple-800 bg-purple-50 px-2 py-0.5 rounded border border-purple-200/80 inline-flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-purple-600"></span>
-            <span>Advocate Retainer Active</span>
-          </span>
+          <h2 className="font-semibold text-slate-900 text-sm tracking-tight">Caveat &amp; advocate</h2>
         </div>
-
         <button
-          onClick={onOpenCaveatModal}
+          type="button"
+          onClick={onOpenDraft}
           className="text-xs font-medium text-slate-600 hover:text-slate-900 flex items-center gap-1 cursor-pointer"
         >
           <FileText className="w-3.5 h-3.5 text-slate-400" />
-          <span>Petition Draft</span>
+          Caveat draft
         </button>
       </div>
 
-      {/* Main Content */}
-      <div className="p-5 flex-1 flex flex-col justify-between">
+      <div className="p-5 flex-1 flex flex-col justify-between gap-3">
         <div>
-          {/* Advocate Information */}
           <div className="flex items-start justify-between gap-4 pb-3.5 border-b border-slate-100">
             <div>
-              <div className="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Empanelled Revenue Advocate</div>
-              <div className="text-sm font-bold text-slate-900 mt-0.5 flex items-center gap-2">
-                <span>{legalRetainer.advocateName}</span>
-                <span className="text-[10px] font-mono font-normal px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                  {legalRetainer.barCouncilNumber}
+              <div className="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Retained advocate</div>
+              <div className="text-sm font-bold text-slate-900 mt-0.5 flex items-center gap-2 flex-wrap">
+                {legal.advocateName}
+                <span className="text-[10px] font-mono font-normal px-1.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                  Enrolment {legal.enrolmentNumber}
                 </span>
               </div>
-              <div className="text-xs text-slate-500 mt-0.5">
-                {legalRetainer.jurisdictionCourt} · Direct: <span className="font-mono text-slate-700">{legalRetainer.contactNumber}</span>
-              </div>
+              <div className="text-xs text-slate-500 mt-0.5">{legal.courts}</div>
             </div>
-
-            <div className="text-right">
+            <div className="text-right shrink-0">
               <span
                 className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded border ${
-                  isExpiringSoon
+                  warn
                     ? 'bg-amber-50 text-amber-900 border-amber-300'
-                    : 'bg-emerald-50 text-emerald-800 border-emerald-200/80'
+                    : caveat.state === 'NONE'
+                      ? 'bg-slate-50 text-slate-700 border-slate-200'
+                      : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                 }`}
               >
-                <span className={`w-1.5 h-1.5 rounded-full ${isExpiringSoon ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
-                <span>
-                  {isExpiringSoon
-                    ? `Renew in ${legalRetainer.daysRemaining}d`
-                    : `Caveat Active · ${legalRetainer.daysRemaining ?? 64}d`}
-                </span>
+                {badge}
               </span>
-              <div className="text-[10px] text-slate-400 font-mono mt-1">
-                Expiry: {legalRetainer.caveatExpiryDate}
-              </div>
+              {caveat.expiresOn && (
+                <div className="text-[10px] text-slate-400 font-mono mt-1">
+                  {caveat.state === 'EXPIRED' ? 'Lapsed' : 'Lapses'} {formatDate(caveat.expiresOn)}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Legal Protection Context (Clean Ledger, No Box Clutter) */}
           <div className="py-3 space-y-2.5 text-xs">
-            {isExpiringSoon && (
-              <div className="p-2.5 rounded bg-amber-50 border border-amber-200/80 text-xs text-amber-900 flex items-start gap-2">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
-                <div className="leading-relaxed text-[11px]">
-                  <strong className="font-semibold">Section 148A(5) CPC 90-Day Renewal Notice:</strong> Under Indian civil law, caveats strictly lapse after 90 days. Click below to file a timely renewal before the Tahsildar & Civil Judge.
-                </div>
+            {legal.caveat && (
+              <div className="text-slate-600">
+                Lodged in <strong className="font-medium text-slate-800">{legal.caveat.court}</strong> on{' '}
+                {formatDate(legal.caveat.lodgedOn)}.
               </div>
             )}
 
-            <div className="rounded p-2.5 bg-slate-50 border border-slate-200/80 leading-relaxed text-slate-600 text-[11px]">
-              <div className="font-semibold text-slate-800 mb-0.5 flex items-center gap-1.5">
-                <Award className="w-3.5 h-3.5 text-slate-500" />
-                <span>Statutory Injunction Defense Guarantee</span>
+            {warn && !caveat.renewalRequested && (
+              <div className="p-2.5 rounded bg-amber-50 border border-amber-200 text-amber-900 flex items-start gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                <span className="text-[11px] leading-relaxed">
+                  A caveat stays in force for {CAVEAT_VALIDITY_DAYS} days (Section 148A(5) CPC). Ask your advocate to
+                  lodge a fresh one before it lapses.
+                </span>
               </div>
-              A standing Section 148A Caveat legally obligates the District Civil Court to issue formal notice to your empanelled advocate before any ex-parte stay, status-quo order, or fraudulent mutation can be passed in your absence.
-            </div>
+            )}
 
-            <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
-              <span>Emergency Response SLA: <strong className="text-slate-800 font-mono font-medium">&lt; 48 Hours</strong></span>
-              <span>Bar Council: <strong className="text-slate-800 font-mono font-medium">High Court of Telangana</strong></span>
-            </div>
+            {caveat.renewalRequested && legal.renewalRequestedAt && (
+              <div className="p-2.5 rounded bg-slate-50 border border-slate-200 text-slate-700 text-[11px]">
+                Renewal requested {formatRelative(legal.renewalRequestedAt, now)}. Your advocate will confirm the new
+                lodging date.
+              </div>
+            )}
+
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              A caveat means the civil court must notify your advocate before passing an order on an application about
+              this plot. It does not stop orders being made. It is a civil-court procedure: objections to a mutation
+              before the Tahsildar are filed separately under the state's land records law.
+            </p>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="pt-2 flex flex-col sm:flex-row items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch gap-2">
           <button
-            onClick={handleRetain}
-            disabled={isLodging}
-            className="w-full sm:w-auto flex-1 bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium py-2 px-3 rounded transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            type="button"
+            onClick={onRequestRenewal}
+            disabled={requesting || caveat.renewalRequested}
+            className="flex-1 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-default text-white text-xs font-medium py-2 px-3 rounded transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            {isLodging ? (
-              <>
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Renewing 90-Day Protection...</span>
-              </>
-            ) : (
-              <>
-                <Scale className="w-3.5 h-3.5" />
-                <span>{isExpiringSoon ? 'Renew Caveat Petition (90 Days)' : 'Re-file Section 148A Caveat'}</span>
-              </>
-            )}
+            <Scale className="w-3.5 h-3.5" />
+            {requesting ? 'Sending…' : actionLabel}
           </button>
-
           <button
-            onClick={onDownloadDossier}
-            className="w-full sm:w-auto bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-medium py-2 px-3 rounded transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            type="button"
+            onClick={onOpenDossier}
+            className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-medium py-2 px-3 rounded transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5 text-slate-500" />
-            <span>Title Dossier</span>
+            <FileCheck className="w-3.5 h-3.5 text-slate-500" />
+            Dossier
           </button>
         </div>
       </div>
-    </div>
+    </section>
   );
-};
+}

@@ -1,75 +1,40 @@
-# Contributing to PARIDHI (परिधि)
+# Contributing to Paridhi
 
-Thank you for contributing to **PARIDHI**, the open platform for remote vacant land protection and verified title defense for the Indian diaspora.
+## Setup
 
----
+```bash
+npm install
+npm test            # API, domain and evidence tests
+npm run typecheck   # type-check the API, shared code and tests
+npm run lint        # lint the web app (oxlint)
+npm run build       # type-check and build the web app
+```
 
-## 1. Core Engineering Disciplines
+Run `npm run dev:api` and `npm run dev:web` together for hot reload on http://localhost:3000.
 
-1. **Anti-Slop Craft Standards:**
-   - The UI strictly adheres to **Light Mode Only** using an authoritative, high-trust architectural aesthetic (`#f8fafc` background, `#ffffff` card surfaces, `#0f172a` deep slate typography, `#e2e8f0` hairline borders).
-   - Zero generic AI templates, zero faux-military jargon, and zero placeholder functions.
+## Principles
 
-2. **Evidentiary Integrity:**
-   - Visual telemetry and inspection reports support cryptographic chain of custody under Section 63 of the **Bharatiya Sakshya Adhiniyam, 2023 (BSA 2023)**.
-   - Any new camera snapshot or field inspection log must support deterministic SHA-256 payload hashing and digital signing.
+1. **Never show a claim the data doesn't support.** Every status, badge and checkmark must be computed from the data.
+   If a rule decides whether something is "clear", put it in `shared/domain.ts` so the API and the UI agree.
+2. **Owner actions are requests.** The app records that an inspection or caveat renewal was requested. Only the
+   inspector or advocate can confirm it happened.
+3. **Be careful with legal wording.** Say what a caveat or a signature actually does. Anything that reads as legal
+   advice needs an advocate's review.
+4. **Sample data stays obviously fake.** Use `example.com` emails, reserved fictional phone numbers (555-01xx in North
+   America, 07700 900xxx or 020 7946 0xxx in the UK) and zeroed enrolment numbers.
+5. **Design.** Light mode, slate palette, hairline borders, no decorative gradients or glows. Colour is for status
+   only: green clear, amber attention, red action.
 
----
+## Where help is welcome
 
-## 2. Key Contribution Vectors
+- A database-backed store to replace `services/src/store.ts`.
+- Owner authentication and role-based access.
+- Camera integrations (snapshot upload from specific 4G solar camera models).
+- Land record check workflows for more states (Maharashtra, Uttar Pradesh, Tamil Nadu).
+- Frontend tests.
 
-### A. State Land Revenue Registry Connectors
-We welcome parsers and polling routines for additional state land record portals:
-- Maharashtra: **Mahabhumi 7/12 & e-Ferfar**
-- Uttar Pradesh: **Bhulekh UP**
-- Gujarat: **AnyRoR Urban & Rural**
-- Rajasthan: **Apna Khata**
+## Pull requests
 
-Each portal integration should:
-1. Normalize parcel search by Survey Number / Khasra / Khata.
-2. Monitor adverse mutation filings and unauthorized partition notices.
-3. Supply metadata for automated generation of **Section 148A CPC Caveat Petitions**.
-
-### B. Indian Perimeter Computer Vision
-We welcome computer vision improvements for weekly visual timelapse change detection:
-- Tipper trucks dumping red clay bricks, stone gravel, or sand aggregates
-- Earthmoving equipment (JCBs, tractors) excavating or leveling boundaries
-- Makeshift squatter structures (tin-sheet sheds, barbed-wire boundary shifting)
-- Shifting or removal of white/yellow boundary survey stones
-
-### C. 4G Solar Hardware & Anti-Theft Optimizations
-- COTS 4G Solar camera integrations (Hikvision, Dahua, Reolink, CP Plus)
-- Low-power duty-cycling and LiFePO4 battery health monitoring
-- Physical anti-climb collar designs and pole tamper sensors
-
----
-
-## 3. Local Development & Testing
-
-1. **Install Dependencies:**
-   ```bash
-   npm install
-   ```
-
-2. **Run Test Suite:**
-   ```bash
-   npm test
-   ```
-
-3. **Build Web Client:**
-   ```bash
-   npm run build
-   ```
-
-4. **Start Local Backend Daemon:**
-   ```bash
-   npm start
-   ```
-
----
-
-## 4. Submitting Pull Requests
-
-- Ensure all 10 test suites pass (`npm test`).
-- Ensure `npm run build` exits with code 0.
-- Write clear conventional commit messages (e.g. `feat: add Tamil Nadu Patta Chitta registry connector`).
+- `npm test`, `npm run typecheck`, `npm run lint` and `npm run build` must pass. CI runs all four.
+- Add or update tests for any change to API behaviour or domain rules.
+- Use clear commit messages, for example `feat: add Maharashtra 7/12 record model`.
