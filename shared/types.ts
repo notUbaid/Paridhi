@@ -189,9 +189,13 @@ export interface Dossier extends SignedRecord {
   signingKeyEphemeral: boolean;
 }
 
+/** How the web app should sign owners in. The publishable key is public by design. */
+export type AuthInfo = { required: false } | { required: true; supabaseUrl: string; publishableKey: string };
+
 export interface HealthResponse {
   status: 'ok';
   demoMode: boolean;
   deviceIngestEnabled: boolean;
   signingKey: { keyId: string; ephemeral: boolean };
+  auth: AuthInfo;
 }

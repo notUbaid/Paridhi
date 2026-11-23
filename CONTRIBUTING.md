@@ -4,7 +4,7 @@
 
 ```bash
 npm install
-npm test            # API, domain and evidence tests
+npm test            # API, database (PGlite), sign-in, domain and evidence tests
 npm run typecheck   # type-check the API, shared code and tests
 npm run lint        # lint the web app (oxlint)
 npm run build       # type-check and build the web app
@@ -27,8 +27,7 @@ Run `npm run dev:api` and `npm run dev:web` together for hot reload on http://lo
 
 ## Where help is welcome
 
-- A database-backed store to replace `services/src/store.ts`.
-- Owner authentication and role-based access.
+- Roles for inspectors, ops staff and advocates.
 - Camera integrations (snapshot upload from specific 4G solar camera models).
 - Land record check workflows for more states (Maharashtra, Uttar Pradesh, Tamil Nadu).
 - Frontend tests.
@@ -36,5 +35,6 @@ Run `npm run dev:api` and `npm run dev:web` together for hot reload on http://lo
 ## Pull requests
 
 - `npm test`, `npm run typecheck`, `npm run lint` and `npm run build` must pass. CI runs all four.
-- Add or update tests for any change to API behaviour or domain rules.
+- Add or update tests for any change to API behaviour or domain rules. Schema changes go in a new file in
+  `supabase/migrations/`; the tests apply every migration to a fresh PGlite database.
 - Use clear commit messages, for example `feat: add Maharashtra 7/12 record model`.

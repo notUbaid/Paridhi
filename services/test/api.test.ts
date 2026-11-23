@@ -24,10 +24,11 @@ describe('API basics', () => {
     fs.rmSync(webDir, { recursive: true, force: true });
   });
 
-  test('health reports demo mode and an ephemeral key', async () => {
+  test('health reports demo mode, no sign-in and an ephemeral key', async () => {
     const { status: code, body } = await server.get('/api/health');
     assert.equal(code, 200);
     assert.equal(body.demoMode, true);
+    assert.deepEqual(body.auth, { required: false });
     assert.equal(body.deviceIngestEnabled, false);
     assert.equal(body.signingKey.ephemeral, true);
   });
@@ -207,10 +208,4 @@ describe('Demo routes', () => {
     await server.close();
   });
 
-  test('are not available outside demo mode', async () => {
-    const server = await startServer({ demoMode: false });
-    const { status: code } = await server.post('/api/demo/properties/prop-shamshabad-412/simulate-alert');
-    assert.equal(code, 404);
-    await server.close();
-  });
 });

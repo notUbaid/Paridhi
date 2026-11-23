@@ -16,7 +16,8 @@
     "start": "npm start -w services",
     "dev:api": "npm run dev -w services",
     "dev:web": "npm run dev -w web",
-    "keygen": "npm run keygen -w services"
+    "keygen": "npm run keygen -w services",
+    "db:seed": "npm run db:seed -w services --"
   },
   "dependencies": {
     "express": "^4.21.2"

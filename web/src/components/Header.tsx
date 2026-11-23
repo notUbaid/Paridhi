@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, Clock, FileCheck, HelpCircle, RotateCcw } from 'lucide-react';
+import { AlertTriangle, Clock, FileCheck, HelpCircle, LogOut, RotateCcw } from 'lucide-react';
 import type { Owner } from '@shared/types';
 import { IST, formatClock } from '../format';
 
 interface HeaderProps {
+  /** The signed-in owner, or null for the open demo. */
+  account: { email: string; signOut: () => void } | null;
   owner: Owner;
   demoMode: boolean;
   lastSyncedAt: Date | null;
@@ -14,6 +16,7 @@ interface HeaderProps {
 }
 
 export function Header({
+  account,
   owner,
   demoMode,
   lastSyncedAt,
@@ -101,6 +104,22 @@ export function Header({
               <HelpCircle className="w-3.5 h-3.5 text-slate-300" />
               <span>How it works</span>
             </button>
+
+            {account && (
+              <div className="flex items-center gap-2 pl-2 ml-1 border-l border-slate-200">
+                <span className="text-[11px] text-slate-500 max-w-40 truncate" title={account.email}>
+                  {account.email}
+                </span>
+                <button
+                  type="button"
+                  onClick={account.signOut}
+                  className="flex items-center gap-1 text-[11px] font-medium text-slate-600 hover:text-slate-900 px-2 py-1 rounded border border-slate-200 hover:bg-slate-50 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5 text-slate-400" />
+                  Sign out
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

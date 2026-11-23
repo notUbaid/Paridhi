@@ -36,14 +36,42 @@ real cameras, staff and advocates. For what is simulated in the current build, s
 shared/types.ts        Data model used by both sides (ISO 8601 timestamps throughout)
 shared/domain.ts       Rules both sides must agree on: caveat expiry (90 days), geofence (50 m),
                        distances and bearings, and the alerts that drive a plot's status
-services/src/app.ts    Express app factory: routes, validation, device auth, error handling
-services/src/store.ts  In-memory store (to be replaced by a database)
+services/src/app.ts    Express app factory: routes, validation, owner and device auth, error handling
+services/src/config.ts Chooses the mode from the environment: database with sign-in, or open demo
+services/src/store.ts  Storage interface with MemoryStore (demo) and PostgresStore (owner-scoped)
+services/src/db.ts     Postgres pool and transactions
+services/src/auth.ts   Verifies Supabase Auth access tokens (JWKS, or a legacy shared secret)
 services/src/seed.ts   Sample portfolio, with dates generated relative to startup
+supabase/migrations/   Database schema
 services/src/evidence.ts  Canonical JSON, SHA-256, Ed25519 signing, RFC 6962-style Merkle tree
 services/src/server.ts Standalone server: API plus the built web app
 api/index.ts           Vercel serverless entry for the same Express app
-web/src/               React dashboard; all data comes from the API
+web/src/               React dashboard and sign-in screen; all data comes from the API
 ```
+
+### Two modes
+
+`loadConfig` picks the mode from the environment:
+
+- **Database with sign-in** (`DATABASE_URL` set): data lives in Postgres and owners sign in with Supabase Auth. The
+  server will not start without the Supabase settings, so real data is never served openly.
+- **Open demo** (no `DATABASE_URL`): three sample plots in memory, no sign-in, and the `/api/demo` routes.
+
+### Storage
+
+`properties` holds each plot as a JSON document plus its `owner_id`. The activity log and signed evidence are separate
+tables, because they grow and are append-only. Owner actions go through `Store.updateProperty`, which locks the row,
+applies the change, and writes the property, new activity and any evidence in one transaction; if the change is
+rejected (for example a duplicate request), nothing is saved. A trigger refuses any update or delete on
+`evidence_records`.
+
+### Sign-in and isolation
+
+The web app reads the Supabase URL and publishable key from `/api/health` and signs owners in with supabase-js
+(password, or an emailed link). Each API request carries the access token. The server verifies it against the
+project's public key set (ES256), then scopes every query to that owner's id, so another owner's plot simply returns
+404. The tables have row level security on and no grants to the Data API roles, so the publishable key cannot read
+them directly. Accounts are created by Paridhi; public sign-up should be turned off in Supabase.
 
 ### Status is derived, never stored
 
@@ -72,6 +100,7 @@ events are measured in hours, not seconds.
 ## Deployment notes
 
 - **Standalone:** `npm run build && npm start` serves the API and the dashboard from one Node process.
-- **Vercel:** `api/index.ts` exposes the same app as a serverless function. Memory is per instance, so a database is
-  required before real use.
-- **Secrets:** set `PARIDHI_SIGNING_KEY` and `PARIDHI_DEVICE_TOKEN` in the host's secret store, never in the repo.
+- **Vercel:** `api/index.ts` exposes the same app as a serverless function. Use Supabase's transaction pooler URL for
+  `DATABASE_URL`. Without a database, memory is per instance and demo changes may not persist.
+- **Secrets:** set `DATABASE_URL`, `PARIDHI_SIGNING_KEY` and `PARIDHI_DEVICE_TOKEN` in the host's secret store, never
+  in the repo.

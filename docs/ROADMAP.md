@@ -13,24 +13,28 @@ Where the code stands and what to build next, in order.
 - Server-side SHA-256 and Ed25519 signing with a configurable key, a published public key, and an RFC 6962-style
   Merkle root over each plot's evidence.
 - Tests that exercise the real HTTP API, the domain rules and the signing code.
+- **Postgres storage** (`supabase/migrations/`, `PostgresStore`): properties, an activity log and append-only
+  evidence. Every change runs in a transaction and rolls back if rejected. Tests run the real schema in PGlite.
+- **Owner sign-in** with Supabase Auth (email and password, or an emailed link). The API verifies access tokens
+  against the project's public key set, and every query is scoped to the signed-in owner. Tables are closed to the
+  Supabase Data API (RLS on, no grants to `anon` or `authenticated`).
 
 ## Next
 
-1. **Database.** Replace `PropertyStore` with Postgres (for example Supabase). Needed before any real customer, and to
-   make the Vercel deployment consistent.
-2. **Accounts and access control.** Owner login; each owner sees only their own plots. Separate roles for inspectors,
-   ops staff and advocates.
-3. **Per-device credentials.** One token or key per camera instead of a shared token, with revocation.
-4. **Camera integration.** Receive snapshots from the chosen camera model (FTP or HTTP upload), store them in object
+1. **Roles for staff.** Separate access for inspectors, ops staff and advocates, so they can update the plots they
+   are assigned without database access.
+2. **Per-device credentials.** One token or key per camera, tied to its plot, instead of a shared token, with
+   revocation.
+3. **Camera integration.** Receive snapshots from the chosen camera model (FTP or HTTP upload), store them in object
    storage, and hash them on arrival.
-5. **Inspector app.** Mobile web form that captures photos with GPS and time, and posts the visit report.
-6. **Ops tools.** Screens for staff to record land record checks and flagged applications, and for advocates to
-   confirm caveat filings and objections.
-7. **Notifications.** Email and WhatsApp alerts for owners.
-8. **Evidence hardening.** Signing key in a KMS, RFC 3161 timestamps, and a certificate workflow under Section 63
+4. **Inspector app.** Mobile web form that captures photos with GPS and time, and posts the visit report.
+5. **Ops tools.** Screens for staff to add plots, record land record checks and flagged applications, and for
+   advocates to confirm caveat filings and objections.
+6. **Notifications.** Email and WhatsApp alerts for owners.
+7. **Evidence hardening.** Signing key in a KMS, RFC 3161 timestamps, and a certificate workflow under Section 63
    BSA with the responsible person's sign-off.
-9. **Frontend tests.** Vitest and React Testing Library for the main flows.
-10. **More states.** Maharashtra (Mahabhumi), Uttar Pradesh (Bhulekh), Tamil Nadu.
+8. **Frontend tests.** Vitest and React Testing Library for the main flows, including sign-in.
+9. **More states.** Maharashtra (Mahabhumi), Uttar Pradesh (Bhulekh), Tamil Nadu.
 
 ## Before launch
 

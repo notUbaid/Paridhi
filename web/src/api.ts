@@ -9,18 +9,33 @@ export class ApiError extends Error {
   }
 }
 
+let getAccessToken: (() => Promise<string | null>) | null = null;
+let onUnauthorized: (() => void) | null = null;
+
+/** Called by the sign-in layer: how to get the current access token, and what to do when it is rejected. */
+export function configureAuth(tokenProvider: typeof getAccessToken, unauthorizedHandler: typeof onUnauthorized) {
+  getAccessToken = tokenProvider;
+  onUnauthorized = unauthorizedHandler;
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const token = getAccessToken ? await getAccessToken() : null;
   let response: Response;
   try {
     response = await fetch(`/api${path}`, {
       ...init,
-      headers: { 'Content-Type': 'application/json', ...init.headers }
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...init.headers
+      }
     });
   } catch {
     throw new ApiError(0, 'Could not reach the Paridhi server.');
   }
   const body = await response.json().catch(() => null);
   if (!response.ok) {
+    if (response.status === 401 && token) onUnauthorized?.();
     throw new ApiError(response.status, body?.error ?? `Request failed (${response.status}).`);
   }
   return body as T;
