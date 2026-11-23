@@ -69,7 +69,7 @@ describe('Geometry', () => {
 
   test('sample inspection photos fall inside the 50 m geofence of their peg', () => {
     for (const property of createSeedProperties(FIXED_NOW)) {
-      for (const photo of property.latestInspection.photos) {
+      for (const photo of property.inspection.latestVisit?.photos ?? []) {
         assert.ok(isPhotoWithinGeofence(photo, property.location.boundaryPegs), `${property.id} ${photo.pegId}`);
       }
     }
@@ -77,7 +77,7 @@ describe('Geometry', () => {
 
   test('a photo far from its peg fails the geofence', () => {
     const [shamshabad] = createSeedProperties(FIXED_NOW);
-    const photo = { ...shamshabad.latestInspection.photos[0], position: { lat: 17.3, lng: 78.5 } };
+    const photo = { ...shamshabad.inspection.latestVisit!.photos[0], position: { lat: 17.3, lng: 78.5 } };
     assert.equal(isPhotoWithinGeofence(photo, shamshabad.location.boundaryPegs), false);
   });
 });

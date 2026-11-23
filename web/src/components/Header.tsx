@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, Clock, FileCheck, HelpCircle, LogOut, RotateCcw } from 'lucide-react';
+import { AlertTriangle, Briefcase, Clock, FileCheck, HelpCircle, LogOut, RotateCcw } from 'lucide-react';
 import type { Owner } from '@shared/types';
 import { IST, formatClock } from '../format';
 
 interface HeaderProps {
   /** The signed-in owner, or null for the open demo. */
   account: { email: string; signOut: () => void } | null;
+  /** Shown to staff (and in the demo). */
+  onOpenStaffConsole?: () => void;
   owner: Owner;
   demoMode: boolean;
   lastSyncedAt: Date | null;
@@ -17,6 +19,7 @@ interface HeaderProps {
 
 export function Header({
   account,
+  onOpenStaffConsole,
   owner,
   demoMode,
   lastSyncedAt,
@@ -84,6 +87,17 @@ export function Header({
                   <AlertTriangle className="w-3.5 h-3.5 text-slate-400" />
                 )}
                 <span>{demoAlert.active ? 'Reset demo plot' : 'Simulate alert'}</span>
+              </button>
+            )}
+
+            {onOpenStaffConsole && (
+              <button
+                type="button"
+                onClick={onOpenStaffConsole}
+                className="flex items-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 hover:text-slate-900 rounded px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer"
+              >
+                <Briefcase className="w-3.5 h-3.5 text-slate-500" />
+                <span>Staff console</span>
               </button>
             )}
 

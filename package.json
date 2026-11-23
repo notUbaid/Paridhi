@@ -17,7 +17,8 @@
     "dev:api": "npm run dev -w services",
     "dev:web": "npm run dev -w web",
     "keygen": "npm run keygen -w services",
-    "db:seed": "npm run db:seed -w services --"
+    "db:seed": "npm run db:seed -w services --",
+    "staff:add": "npm run staff:add -w services --"
   },
   "dependencies": {
     "express": "^4.21.2"

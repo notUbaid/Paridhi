@@ -12,6 +12,12 @@ export const CAVEAT_VALIDITY_DAYS = 90;
 export const CAVEAT_RENEWAL_WARNING_DAYS = 15;
 /** An inspection photo counts as on-site when its GPS position is this close to the peg it shows. */
 export const PHOTO_GEOFENCE_METERS = 50;
+/** Monthly inspections: the next visit is due this many days after the last one. */
+export const INSPECTION_INTERVAL_DAYS = 30;
+/** A visit is flagged as overdue this many days after it was due. */
+export const INSPECTION_OVERDUE_GRACE_DAYS = 3;
+/** The land record should be checked at least this often. */
+export const REGISTRY_CHECK_STALE_DAYS = 14;
 
 export function addDays(iso: string, days: number): string {
   return new Date(new Date(iso).getTime() + days * DAY_MS).toISOString();
@@ -96,7 +102,8 @@ export type PropertyStatus = 'ALL_CLEAR' | 'ATTENTION_NEEDED' | 'ACTION_REQUIRED
 /** Everything on a property that needs the owner's attention, most serious first. */
 export function getPropertyAlerts(property: PropertyRecord, now: Date): PropertyAlert[] {
   const alerts: PropertyAlert[] = [];
-  const { revenue, camera, latestInspection: inspection, legal } = property;
+  const { revenue, camera, inspection, legal } = property;
+  const visit = inspection.latestVisit;
 
   const flagged = revenue.flaggedMutations.length;
   if (flagged > 0) {
@@ -106,20 +113,41 @@ export function getPropertyAlerts(property: PropertyRecord, now: Date): Property
       message: `${flagged} mutation application${flagged === 1 ? '' : 's'} on the land record not started by the owner`
     });
   }
-  if (!inspection.boundaryPegsIntact) {
+  if (visit && !visit.boundaryPegsIntact) {
     alerts.push({ level: 'ACTION', area: 'INSPECTION', message: 'Inspector found boundary pegs disturbed' });
   }
-  if (camera.changeDetected) {
+  if (camera?.changeDetected) {
     alerts.push({ level: 'ATTENTION', area: 'CAMERA', message: 'Weekly camera comparison flagged a change on the plot' });
   }
-  if (!camera.online) {
+  if (camera && !camera.online) {
     alerts.push({ level: 'ATTENTION', area: 'CAMERA', message: 'Camera is offline' });
   }
-  if (!camera.tamperSwitchNormal) {
+  if (camera && !camera.tamperSwitchNormal) {
     alerts.push({ level: 'ATTENTION', area: 'CAMERA', message: 'Camera enclosure tamper switch tripped' });
   }
-  if (inspection.debrisFound) {
+  if (visit?.debrisFound) {
     alerts.push({ level: 'ATTENTION', area: 'INSPECTION', message: 'Inspector found debris or dumped material' });
+  }
+  const overdueDays = Math.floor((now.getTime() - new Date(inspection.nextVisitDue).getTime()) / DAY_MS);
+  if (overdueDays >= INSPECTION_OVERDUE_GRACE_DAYS) {
+    alerts.push({
+      level: 'ATTENTION',
+      area: 'INSPECTION',
+      message: visit ? `Monthly inspection is ${overdueDays} days overdue` : 'First inspection visit is overdue'
+    });
+  }
+  const checkAgeDays = revenue.lastCheckedAt
+    ? Math.floor((now.getTime() - new Date(revenue.lastCheckedAt).getTime()) / DAY_MS)
+    : null;
+  if (checkAgeDays === null || checkAgeDays >= REGISTRY_CHECK_STALE_DAYS) {
+    alerts.push({
+      level: 'ATTENTION',
+      area: 'REGISTRY',
+      message:
+        checkAgeDays === null
+          ? 'Land record has not been checked yet'
+          : `Land record not checked for ${checkAgeDays} days`
+    });
   }
 
   const caveat = getCaveatStatus(legal, now);
@@ -142,4 +170,32 @@ export function getPropertyStatus(alerts: PropertyAlert[]): PropertyStatus {
   if (alerts.some((a) => a.level === 'ACTION')) return 'ACTION_REQUIRED';
   if (alerts.length > 0) return 'ATTENTION_NEEDED';
   return 'ALL_CLEAR';
+}
+
+/** Centre of a set of pegs (simple average, fine at plot scale). */
+export function centerOf(pegs: BoundaryPeg[]): GeoPoint {
+  const lat = pegs.reduce((sum, p) => sum + p.position.lat, 0) / pegs.length;
+  const lng = pegs.reduce((sum, p) => sum + p.position.lng, 0) / pegs.length;
+  return { lat, lng };
+}
+
+const SQUARE_METERS_PER_ACRE = 4046.8564224;
+
+/** Area enclosed by the pegs in acres (shoelace formula on a local flat projection). */
+export function polygonAreaAcres(pegs: BoundaryPeg[]): number {
+  if (pegs.length < 3) return 0;
+  const origin = centerOf(pegs);
+  const metersPerDegLat = (Math.PI / 180) * EARTH_RADIUS_METERS;
+  const metersPerDegLng = metersPerDegLat * Math.cos(toRadians(origin.lat));
+  const points = pegs.map((p) => ({
+    x: (p.position.lng - origin.lng) * metersPerDegLng,
+    y: (p.position.lat - origin.lat) * metersPerDegLat
+  }));
+  let twiceArea = 0;
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % points.length];
+    twiceArea += a.x * b.y - b.x * a.y;
+  }
+  return Math.abs(twiceArea) / 2 / SQUARE_METERS_PER_ACRE;
 }

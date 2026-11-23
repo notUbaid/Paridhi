@@ -1,6 +1,6 @@
 import { createSupabaseVerifier, type TokenVerifier } from './auth.js';
 import { createPgDatabase } from './db.js';
-import { createSeedProperties } from './seed.js';
+import { SAMPLE_ASSIGNMENTS, SAMPLE_STAFF, createSeedProperties } from './seed.js';
 import { MemoryStore, PostgresStore, type Store } from './store.js';
 
 export interface AuthConfig {
@@ -36,7 +36,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   };
 
   if (!databaseUrl) {
-    return { ...shared, store: new MemoryStore(() => createSeedProperties(new Date())), auth: null };
+    const store = new MemoryStore({
+      properties: () => createSeedProperties(new Date()),
+      staff: SAMPLE_STAFF,
+      assignments: SAMPLE_ASSIGNMENTS
+    });
+    return { ...shared, store, auth: null };
   }
 
   const supabaseUrl = value(env, 'SUPABASE_URL');

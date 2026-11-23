@@ -55,8 +55,10 @@ export function RequestInspectionModal({ property, open, onClose, onSubmit }: Re
             {property.location.village}, {property.location.mandalTaluk}, {property.location.district}
           </div>
           <div className="mt-1.5 text-slate-600">
-            Inspector: <span className="font-medium text-slate-900">{property.latestInspection.inspectorName}</span>{' '}
-            <span className="font-mono text-slate-400">({property.latestInspection.inspectorId})</span>
+            Inspector: <span className="font-medium text-slate-900">{property.inspection.inspectorName}</span>{' '}
+            {property.inspection.inspectorId && (
+              <span className="font-mono text-slate-400">({property.inspection.inspectorId})</span>
+            )}
           </div>
         </div>
 

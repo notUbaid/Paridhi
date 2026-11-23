@@ -36,9 +36,11 @@ real cameras, staff and advocates. For what is simulated in the current build, s
 shared/types.ts        Data model used by both sides (ISO 8601 timestamps throughout)
 shared/domain.ts       Rules both sides must agree on: caveat expiry (90 days), geofence (50 m),
                        distances and bearings, and the alerts that drive a plot's status
-services/src/app.ts    Express app factory: routes, validation, owner and device auth, error handling
+services/src/app.ts    Express app factory: identifies the viewer, owner and device routes, photos, errors
+services/src/staff.ts  Staff console routes and role checks
+services/src/http.ts   Validation helpers, errors, activity log helper
 services/src/config.ts Chooses the mode from the environment: database with sign-in, or open demo
-services/src/store.ts  Storage interface with MemoryStore (demo) and PostgresStore (owner-scoped)
+services/src/store.ts  Storage interface with MemoryStore (demo) and PostgresStore, scoped per request
 services/src/db.ts     Postgres pool and transactions
 services/src/auth.ts   Verifies Supabase Auth access tokens (JWKS, or a legacy shared secret)
 services/src/seed.ts   Sample portfolio, with dates generated relative to startup
@@ -46,7 +48,7 @@ supabase/migrations/   Database schema
 services/src/evidence.ts  Canonical JSON, SHA-256, Ed25519 signing, RFC 6962-style Merkle tree
 services/src/server.ts Standalone server: API plus the built web app
 api/index.ts           Vercel serverless entry for the same Express app
-web/src/               React dashboard and sign-in screen; all data comes from the API
+web/src/               React owner view, sign-in screen and staff console (web/src/staff, at /staff)
 ```
 
 ### Two modes
@@ -64,6 +66,28 @@ tables, because they grow and are append-only. Owner actions go through `Store.u
 applies the change, and writes the property, new activity and any evidence in one transaction; if the change is
 rejected (for example a duplicate request), nothing is saved. A trigger refuses any update or delete on
 `evidence_records`.
+
+### Roles and scopes
+
+Every request is resolved to a viewer: an owner, a staff member (`staff_members` row: ops, inspector or advocate),
+or the open demo. Each store call takes a scope:
+
+| Scope | Plots |
+| :--- | :--- |
+| `owner` | Plots whose `owner_id` is the viewer |
+| `inspector` / `advocate` | Plots whose `inspector_user_id` / `advocate_user_id` is the viewer |
+| `all` | Every plot: ops staff, camera devices, and the demo |
+
+The scope is part of the SQL `where` clause, so a plot outside it is simply not found (404). Role checks on top decide
+which actions each role may take; see the table in the README.
+
+### Inspection photos
+
+The inspector's phone shrinks each photo to at most 1600 px, records its GPS position, and uploads it with the peg it
+shows. The server checks the file is a real JPEG, PNG or WebP, hashes it, and stores it unattached. Saving the visit
+attaches the photos (each photo can belong to one visit only) and signs a visit record that includes every photo's
+hash. A trigger stops photo content, location or visit link from changing, and stops photos being deleted. Photos are
+served through the API with the same access checks as the plot.
 
 ### Sign-in and isolation
 

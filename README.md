@@ -38,9 +38,9 @@ Proposed pricing is ₹4,999 a month per plot. The unit economics and what they 
 | API | Real Express API with input validation, JSON errors and tests. |
 | Data | Real when `DATABASE_URL` is set: Postgres (Supabase), with every query scoped to the signed-in owner and evidence stored append-only. Without it, an open demo on three sample plots held in memory. |
 | Sign-in | Real when a database is set: Supabase Auth with email and password or an emailed sign-in link. Paridhi creates owner accounts; there is no public sign-up. |
-| Camera | **Simulated.** `services/device-simulator/device_simulator.py` plays the part of a camera and reports incidents with a device token. |
-| Land record checks | **Simulated.** "Check now" re-reads the stored record. It never clears an existing flag. |
-| Inspections and caveat renewals | Recorded as requests. Nobody is dispatched and nothing is filed. |
+| Staff console | Real. Ops staff add plots and assign people; inspectors record visits with geotagged photos; ops record land record checks and flag applications; advocates confirm caveat lodgings and resolve flags. See [Staff console](#staff-console). |
+| Land record checks | Recorded by staff after checking the portal by hand; there is no portal integration. In the demo, "Check now" on the owner view simulates one. Checks never clear an existing flag. |
+| Camera | **Simulated.** `services/device-simulator/device_simulator.py` plays the part of a camera. New plots start without a camera and are protected by inspections alone. |
 | Evidence integrity | Real. Incidents and dossiers are hashed (SHA-256) and signed (Ed25519) by the server, and can be verified with the public key. See [docs/BSA2023_EVIDENCE_SPEC.md](docs/BSA2023_EVIDENCE_SPEC.md). |
 
 The plan for closing these gaps is in [docs/ROADMAP.md](docs/ROADMAP.md).
@@ -78,7 +78,13 @@ npm run dev:web
    npm run db:seed -- --email owner@example.com
    ```
 
-5. `npm run build && npm start`, open http://localhost:4000 and sign in.
+5. Make yourself the first ops staff member (after that, ops can manage the team in the console):
+
+   ```bash
+   npm run staff:add -- --email you@example.com --role ops --name "Your Name"
+   ```
+
+6. `npm run build && npm start`, open http://localhost:4000 and sign in.
 
 The server refuses to start with a database but no sign-in settings, so real data is never served openly.
 
@@ -96,6 +102,22 @@ Copy `.env.example` to `.env` (gitignored) or set these in your hosting provider
 | `PARIDHI_SIGNING_KEY` | Ed25519 private key for signing evidence. Generate one with `npm run keygen`. Without it the server makes a throwaway key, and signatures stop verifying after a restart. |
 | `PORT` | Port for `npm start`. Defaults to 4000. |
 
+### Staff console
+
+Staff sign in like owners and land on `/staff`. What each role can do:
+
+| Role | Sees | Can |
+| :--- | :--- | :--- |
+| Ops | Every plot | Add plots for existing owner accounts, assign inspectors and advocates, record land record checks, flag and resolve mutation applications, record visits, confirm caveats, manage the team |
+| Inspector | Plots assigned to them | Record visits: checklist, notes, and a photo of each corner peg. Photos are shrunk on the phone, stamped with its GPS position, hashed on arrival and checked against the surveyed peg (50 m). Each visit is saved as signed evidence. |
+| Advocate | Plots assigned to them | Confirm a caveat was lodged (starts the 90-day period and closes the owner's renewal request), record the outcome of a flagged application |
+
+Staff accounts are ordinary Supabase Auth users with a row in `staff_members`. In the open demo you act as ops on the
+sample plots; open **Staff console** from the owner view.
+
+Photos are stored in Postgres for the pilot (resized to about 250 KB each). Move them to object storage as volume
+grows.
+
 ### Simulating a camera incident
 
 ```bash
@@ -110,8 +132,8 @@ The plot turns to "Needs attention" and the incident appears in the activity log
 ## API
 
 With a database configured, every route except `/api/health`, `/api/evidence/public-key` and device incidents needs
-`Authorization: Bearer <Supabase access token>`, and only returns the signed-in owner's plots. Another owner's plot
-returns 404.
+`Authorization: Bearer <Supabase access token>`. Owner routes only return the signed-in owner's plots, and staff
+routes only the plots the staff member may see; anything else returns 404.
 
 | Method and path | Description |
 | :--- | :--- |
@@ -119,12 +141,24 @@ returns 404.
 | `GET /api/properties` | The owner's plots. |
 | `GET /api/properties/:id` | One plot. |
 | `POST /api/properties/:id/inspection-requests` | Ask for an extra inspection. Body: `{ "notes": "…" }` (up to 500 characters). |
-| `POST /api/properties/:id/registry-checks` | Record a land record check. Existing flags are kept. |
+| `GET /api/me` | Who is signed in and their staff role, if any. |
+| `GET /api/properties/:id/photos/:photoId` | An inspection photo, for the owner or staff who can see the plot. |
 | `POST /api/properties/:id/caveat-renewals` | Ask the advocate to renew (or file) the caveat. |
 | `POST /api/properties/:id/incidents` | Camera incident. Requires the device token. Body: `type`, `description`, optional `snapshotSha256`, `capturedAt`. |
 | `GET /api/properties/:id/evidence` | Signed evidence records and their Merkle root. |
 | `GET /api/properties/:id/dossier` | A signed snapshot of everything on file for the plot. |
 | `GET /api/evidence/public-key` | Public key for verifying signatures. |
+| `GET /api/staff/properties` | Plots the staff member can see, with owner email and assignments, plus the staff list. |
+| `POST /api/staff/properties` | Ops: add a plot for an existing owner account (four corner pegs, land record, team). |
+| `POST /api/staff/properties/:id/assignments` | Ops: set the inspector and advocate. |
+| `POST /api/staff/properties/:id/photos?pegId=&lat=&lng=` | Ops, inspector: upload a JPEG/PNG/WebP (up to 3 MB) for a peg. |
+| `POST /api/staff/properties/:id/inspection-visits` | Ops, inspector: record a visit with uploaded photo ids. |
+| `POST /api/staff/properties/:id/registry-checks` | Ops: record a land record check. |
+| `POST /api/staff/properties/:id/flagged-mutations` | Ops: flag a mutation application. |
+| `POST /api/staff/properties/:id/flagged-mutations/:mutationId/resolve` | Ops, advocate: record the outcome. |
+| `POST /api/staff/properties/:id/caveats` | Ops, advocate: confirm a caveat was lodged. |
+| `GET`, `POST /api/staff/team`, `DELETE /api/staff/team/:userId` | Ops: list, add or remove staff (database mode only). |
+| `POST /api/properties/:id/registry-checks` | Demo only: simulated check from the owner view. |
 | `POST /api/demo/properties/:id/simulate-alert` | Demo only. |
 | `POST /api/demo/properties/:id/reset` | Demo only. |
 
@@ -168,9 +202,9 @@ launch:
 
 ## More screenshots
 
-| Signed dossier | Caveat draft |
+| Staff console | Signed dossier |
 | :---: | :---: |
-| ![Signed property dossier](assets/screenshots/dossier.png) | ![Caveat draft for advocate review](assets/screenshots/caveat-draft.png) |
+| ![Staff console](assets/screenshots/staff-console.png) | ![Signed property dossier](assets/screenshots/dossier.png) |
 
 ## License
 

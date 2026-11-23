@@ -3,7 +3,7 @@ import { RefreshCw } from 'lucide-react';
 import type { HealthResponse } from '@shared/types';
 import { api, errorMessage } from './api';
 import { StatusScreen } from './components/StatusScreen';
-import { Dashboard } from './Dashboard';
+import { Shell } from './Shell';
 
 // Only loaded when the server requires sign-in, so the open demo never downloads the auth client.
 const AuthGate = lazy(() => import('./AuthGate'));
@@ -44,5 +44,5 @@ export default function App() {
     );
   }
 
-  return <Dashboard health={health} account={null} />;
+  return <Shell health={health} account={null} />;
 }

@@ -8,10 +8,11 @@
   "scripts": {
     "start": "tsx src/server.ts",
     "dev": "tsx watch src/server.ts",
-    "test": "tsx --test test/api.test.ts test/domain.test.ts test/evidence.test.ts test/postgres.test.ts",
+    "test": "tsx --test test/api.test.ts test/domain.test.ts test/evidence.test.ts test/postgres.test.ts test/staff.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "keygen": "tsx scripts/generate-signing-key.ts",
-    "db:seed": "tsx scripts/seed-database.ts"
+    "db:seed": "tsx scripts/seed-database.ts",
+    "staff:add": "tsx scripts/add-staff.ts"
   },
   "dependencies": {
     "express": "^4.21.2",

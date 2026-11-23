@@ -1,4 +1,14 @@
-import type { Dossier, HealthResponse, PropertyRecord } from '@shared/types';
+import type {
+  Dossier,
+  EvidenceRecord,
+  HealthResponse,
+  PropertyRecord,
+  StaffMember,
+  StaffProperty,
+  StaffRole,
+  UploadedPhoto,
+  Viewer
+} from '@shared/types';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -18,48 +28,130 @@ export function configureAuth(tokenProvider: typeof getAccessToken, unauthorized
   onUnauthorized = unauthorizedHandler;
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function send(path: string, init: RequestInit & { json?: unknown } = {}): Promise<Response> {
   const token = getAccessToken ? await getAccessToken() : null;
+  const { json, headers, ...rest } = init;
   let response: Response;
   try {
     response = await fetch(`/api${path}`, {
-      ...init,
+      ...rest,
+      body: json !== undefined ? JSON.stringify(json) : rest.body,
       headers: {
-        'Content-Type': 'application/json',
+        ...(json !== undefined ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...init.headers
+        ...headers
       }
     });
   } catch {
     throw new ApiError(0, 'Could not reach the Paridhi server.');
   }
-  const body = await response.json().catch(() => null);
   if (!response.ok) {
+    const body = await response.json().catch(() => null);
     if (response.status === 401 && token) onUnauthorized?.();
     throw new ApiError(response.status, body?.error ?? `Request failed (${response.status}).`);
   }
-  return body as T;
+  return response;
 }
 
-const post = <T>(path: string, body?: unknown) =>
-  request<T>(path, { method: 'POST', body: JSON.stringify(body ?? {}) });
+async function request<T>(path: string, init: RequestInit & { json?: unknown } = {}): Promise<T> {
+  const response = await send(path, init);
+  return (response.status === 204 ? null : await response.json()) as T;
+}
+
+const post = <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST', json: body ?? {} });
 
 const propertyPath = (id: string) => `/properties/${encodeURIComponent(id)}`;
+const staffPath = (id: string) => `/staff/properties/${encodeURIComponent(id)}`;
 
 type PropertyResponse = { property: PropertyRecord };
+const property = (r: PropertyResponse) => r.property;
+
+export interface NewPlotInput {
+  ownerEmail: string;
+  owner: { name: string; overseasCity: string; overseasCountry: string; timeZone: string; phone?: string };
+  name: string;
+  surveyNumber: string;
+  plotSizeDisplay?: string;
+  marketValuationINR?: number;
+  location: {
+    village: string;
+    mandalTaluk: string;
+    district: string;
+    state: string;
+    cityNear?: string;
+    pegs: { lat: number; lng: number }[];
+    boundaries: { north: string; east: string; south: string; west: string };
+  };
+  revenue: {
+    portalName: string;
+    portalUrl: string;
+    surveyNumber: string;
+    accountLabel: string;
+    accountNumber: string;
+    recordedOwner: string;
+    recordStatus?: string;
+    propertyTaxStatus?: string;
+    encumbranceStatus?: string;
+  };
+  legal: { courts: string };
+  inspectorUserId: string | null;
+  advocateUserId: string | null;
+  firstVisitDue: string;
+}
+
+export interface VisitInput {
+  boundaryPegsIntact: boolean;
+  debrisFound: boolean;
+  neighborInquiryConducted: boolean;
+  neighborFeedback: string;
+  notes: string;
+  photoIds: string[];
+}
 
 export const api = {
   health: () => request<HealthResponse>('/health'),
+  me: () => request<{ viewer: Viewer }>('/me').then((r) => r.viewer),
+
   listProperties: () => request<{ properties: PropertyRecord[] }>('/properties').then((r) => r.properties),
-  requestInspection: (id: string, notes: string) =>
-    post<PropertyResponse>(`${propertyPath(id)}/inspection-requests`, { notes }).then((r) => r.property),
-  checkRegistry: (id: string) => post<PropertyResponse>(`${propertyPath(id)}/registry-checks`).then((r) => r.property),
-  requestCaveatRenewal: (id: string) =>
-    post<PropertyResponse>(`${propertyPath(id)}/caveat-renewals`).then((r) => r.property),
+  requestInspection: (id: string, notes: string) => post<PropertyResponse>(`${propertyPath(id)}/inspection-requests`, { notes }).then(property),
+  checkRegistry: (id: string) => post<PropertyResponse>(`${propertyPath(id)}/registry-checks`).then(property),
+  requestCaveatRenewal: (id: string) => post<PropertyResponse>(`${propertyPath(id)}/caveat-renewals`).then(property),
   getDossier: (id: string) => request<{ dossier: Dossier }>(`${propertyPath(id)}/dossier`).then((r) => r.dossier),
-  simulateAlert: (id: string) =>
-    post<PropertyResponse>(`/demo${propertyPath(id)}/simulate-alert`).then((r) => r.property),
-  resetDemo: (id: string) => post<PropertyResponse>(`/demo${propertyPath(id)}/reset`).then((r) => r.property)
+  photoBlob: async (propertyId: string, photoId: string) =>
+    (await send(`${propertyPath(propertyId)}/photos/${encodeURIComponent(photoId)}`)).blob(),
+
+  simulateAlert: (id: string) => post<PropertyResponse>(`/demo${propertyPath(id)}/simulate-alert`).then(property),
+  resetDemo: (id: string) => post<PropertyResponse>(`/demo${propertyPath(id)}/reset`).then(property),
+
+  staff: {
+    list: () => request<{ properties: StaffProperty[]; staff: StaffMember[] }>('/staff/properties'),
+    createPlot: (input: NewPlotInput) => post<PropertyResponse>('/staff/properties', input).then(property),
+    assign: (id: string, inspectorUserId: string | null, advocateUserId: string | null) =>
+      post<PropertyResponse>(`${staffPath(id)}/assignments`, { inspectorUserId, advocateUserId }).then(property),
+    uploadPhoto: (id: string, image: Blob, meta: { pegId: string; lat: number; lng: number; capturedAt: string }) =>
+      request<{ photo: UploadedPhoto }>(
+        `${staffPath(id)}/photos?${new URLSearchParams({
+          pegId: meta.pegId,
+          lat: String(meta.lat),
+          lng: String(meta.lng),
+          capturedAt: meta.capturedAt
+        })}`,
+        { method: 'POST', body: image, headers: { 'Content-Type': image.type } }
+      ).then((r) => r.photo),
+    recordVisit: (id: string, visit: VisitInput) =>
+      post<{ property: PropertyRecord; evidence: EvidenceRecord }>(`${staffPath(id)}/inspection-visits`, visit),
+    recordCheck: (id: string, note: string) => post<PropertyResponse>(`${staffPath(id)}/registry-checks`, { note }).then(property),
+    flagMutation: (id: string, flag: { reference: string; filedOn: string; description: string }) =>
+      post<PropertyResponse>(`${staffPath(id)}/flagged-mutations`, flag).then(property),
+    resolveMutation: (id: string, mutationId: string, outcome: string) =>
+      post<PropertyResponse>(`${staffPath(id)}/flagged-mutations/${encodeURIComponent(mutationId)}/resolve`, { outcome }).then(property),
+    confirmCaveat: (id: string, court: string, lodgedOn: string) =>
+      post<PropertyResponse>(`${staffPath(id)}/caveats`, { court, lodgedOn }).then(property),
+    team: () => request<{ staff: StaffMember[] }>('/staff/team').then((r) => r.staff),
+    addStaff: (member: { email: string; role: StaffRole; displayName: string; staffCode: string }) =>
+      post<{ member: StaffMember }>('/staff/team', member).then((r) => r.member),
+    removeStaff: (userId: string) => request<null>(`/staff/team/${encodeURIComponent(userId)}`, { method: 'DELETE' })
+  }
 };
 
 export function errorMessage(error: unknown): string {

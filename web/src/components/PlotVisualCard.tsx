@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AlertTriangle, BatteryCharging, Camera, Clock, Compass, Radio, ShieldCheck, TowerControl } from 'lucide-react';
 import { bearingDegrees, distanceMeters, formatQuadrantBearing } from '@shared/domain';
-import type { BoundaryPeg, PropertyRecord } from '@shared/types';
+import type { BoundaryPeg, CameraPod, PropertyRecord } from '@shared/types';
 import { formatDate, formatDateTime, formatMeters, formatRelative } from '../format';
 
 type View = 'latest' | 'survey' | 'compare';
@@ -104,10 +104,10 @@ function SurveyOverlay({ pegs, pegsIntact }: { pegs: BoundaryPeg[]; pegsIntact: 
   );
 }
 
-export function PlotVisualCard({ property, now }: { property: PropertyRecord; now: Date }) {
+function CameraView({ property, camera, now }: { property: PropertyRecord; camera: CameraPod; now: Date }) {
   const [view, setView] = useState<View>('latest');
   const [compareFrame, setCompareFrame] = useState<'latest' | 'baseline'>('latest');
-  const { camera, location, latestInspection } = property;
+  const { location, inspection } = property;
 
   const views: { id: View; label: string }[] = [
     { id: 'latest', label: 'Latest' },
@@ -161,7 +161,7 @@ export function PlotVisualCard({ property, now }: { property: PropertyRecord; no
           className={`w-full h-full object-cover select-none ${view === 'survey' ? 'brightness-90' : ''}`}
         />
 
-        {view === 'survey' && <SurveyOverlay pegs={location.boundaryPegs} pegsIntact={latestInspection.boundaryPegsIntact} />}
+        {view === 'survey' && <SurveyOverlay pegs={location.boundaryPegs} pegsIntact={inspection.latestVisit?.boundaryPegsIntact ?? true} />}
 
         {view !== 'survey' && (
           <div className="absolute top-3 right-3 bg-slate-900/85 text-white px-2.5 py-1 rounded-md text-[11px] font-mono flex items-center gap-1.5">
@@ -246,5 +246,40 @@ export function PlotVisualCard({ property, now }: { property: PropertyRecord; no
         </div>
       </dl>
     </section>
+  );
+}
+
+/** A plot protected by inspections alone, before a camera is installed. */
+function NoCameraView({ property }: { property: PropertyRecord }) {
+  return (
+    <section className="bg-white rounded-lg border border-slate-200 overflow-hidden flex flex-col">
+      <div className="px-5 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50/60">
+        <div className="flex items-center gap-2">
+          <Compass className="w-4 h-4 text-slate-700 shrink-0" />
+          <h2 className="font-semibold text-slate-900 text-sm tracking-tight">Survey</h2>
+          <span className="text-[11px] font-mono px-2 py-0.5 rounded border text-slate-600 bg-slate-50 border-slate-200">
+            No camera installed
+          </span>
+        </div>
+      </div>
+      <div className="relative bg-slate-800 h-[360px] overflow-hidden">
+        <SurveyOverlay
+          pegs={property.location.boundaryPegs}
+          pegsIntact={property.inspection.latestVisit?.boundaryPegsIntact ?? true}
+        />
+      </div>
+      <div className="px-5 py-3 text-xs text-slate-600 leading-relaxed">
+        This plot is watched through monthly field inspections and land record checks. Camera monitoring can be added
+        later; snapshots and weekly comparisons will appear here once it is installed.
+      </div>
+    </section>
+  );
+}
+
+export function PlotVisualCard({ property, now }: { property: PropertyRecord; now: Date }) {
+  return property.camera ? (
+    <CameraView property={property} camera={property.camera} now={now} />
+  ) : (
+    <NoCameraView property={property} />
   );
 }

@@ -41,7 +41,7 @@ export function Modal({ open, onClose, title, icon, badge, footer, size = 'lg', 
         return;
       }
       if (event.key !== 'Tab' || !panelRef.current) return;
-      const focusable = [...panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE)];
+      const focusable = Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
       if (focusable.length === 0) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];

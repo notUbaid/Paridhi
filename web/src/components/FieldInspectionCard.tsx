@@ -4,6 +4,7 @@ import { PHOTO_GEOFENCE_METERS, isPhotoWithinGeofence } from '@shared/domain';
 import type { InspectionPhoto, PropertyRecord } from '@shared/types';
 import { formatDate, formatDateTime, formatRelative } from '../format';
 import { InspectionPhotoModal } from './InspectionPhotoModal';
+import { PhotoImage } from './PhotoImage';
 
 interface FieldInspectionCardProps {
   property: PropertyRecord;
@@ -24,12 +25,14 @@ function Check({ ok, label, detail }: { ok: boolean; label: string; detail: stri
 
 export function FieldInspectionCard({ property, now, onRequestVisit }: FieldInspectionCardProps) {
   const [openPhoto, setOpenPhoto] = useState<InspectionPhoto | null>(null);
-  const inspection = property.latestInspection;
+  const { inspection } = property;
+  const visit = inspection.latestVisit;
   const pegs = property.location.boundaryPegs;
 
-  const photosInside = inspection.photos.filter((photo) => isPhotoWithinGeofence(photo, pegs)).length;
-  const allPhotosInside = photosInside === inspection.photos.length && inspection.photos.length > 0;
-  const passed = inspection.boundaryPegsIntact && !inspection.debrisFound && inspection.neighborInquiryConducted && allPhotosInside;
+  const photos = visit?.photos ?? [];
+  const photosInside = photos.filter((photo) => isPhotoWithinGeofence(photo, pegs)).length;
+  const allPhotosInside = photosInside === photos.length && photos.length > 0;
+  const passed = !!visit && visit.boundaryPegsIntact && !visit.debrisFound && visit.neighborInquiryConducted && allPhotosInside;
 
   const pending =
     inspection.onDemandRequest && new Date(inspection.onDemandRequest.targetVisitBy) > now ? inspection.onDemandRequest : null;
@@ -59,24 +62,32 @@ export function FieldInspectionCard({ property, now, onRequestVisit }: FieldInsp
           <div>
             <div className="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Inspector</div>
             <div className="text-sm font-bold text-slate-900 mt-0.5 flex items-center gap-2">
-              {inspection.inspectorName}
-              <span className="text-[10px] font-mono font-normal px-1.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                {inspection.inspectorId}
-              </span>
+              {visit?.inspectorName ?? inspection.inspectorName}
+              {(visit?.inspectorId ?? inspection.inspectorId) && (
+                <span className="text-[10px] font-mono font-normal px-1.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                  {visit?.inspectorId ?? inspection.inspectorId}
+                </span>
+              )}
             </div>
             <div className="text-xs text-slate-500 mt-1">
-              Visited {formatDateTime(inspection.inspectedAt)} ({formatRelative(inspection.inspectedAt, now)})
+              {visit
+                ? `Visited ${formatDateTime(visit.inspectedAt)} (${formatRelative(visit.inspectedAt, now)})`
+                : 'No visit recorded yet'}
             </div>
           </div>
           <div className="text-right shrink-0">
-            <span
-              className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded border ${
-                passed ? 'text-emerald-800 bg-emerald-50 border-emerald-200' : 'text-red-800 bg-red-50 border-red-200'
-              }`}
-            >
-              {passed ? 'All checks passed' : 'Issues found'}
-            </span>
-            <div className="text-[10px] text-slate-400 font-mono mt-1">Next visit due {formatDate(inspection.nextVisitDue)}</div>
+            {visit && (
+              <span
+                className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded border ${
+                  passed ? 'text-emerald-800 bg-emerald-50 border-emerald-200' : 'text-red-800 bg-red-50 border-red-200'
+                }`}
+              >
+                {passed ? 'All checks passed' : 'Issues found'}
+              </span>
+            )}
+            <div className="text-[10px] text-slate-400 font-mono mt-1">
+              {visit ? 'Next visit due' : 'First visit due'} {formatDate(inspection.nextVisitDue)}
+            </div>
           </div>
         </div>
 
@@ -87,67 +98,74 @@ export function FieldInspectionCard({ property, now, onRequestVisit }: FieldInsp
           </div>
         )}
 
-        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600">
-          <Check
-            ok={inspection.boundaryPegsIntact}
-            label="Boundary pegs"
-            detail={inspection.boundaryPegsIntact ? `All ${pegs.length} in place` : 'One or more disturbed'}
-          />
-          <Check
-            ok={!inspection.debrisFound}
-            label="Dumping or debris"
-            detail={inspection.debrisFound ? 'Found on the plot' : 'None found'}
-          />
-          <Check
-            ok={inspection.neighborInquiryConducted}
-            label="Neighbours"
-            detail={inspection.neighborInquiryConducted ? inspection.neighborFeedback : 'Not spoken to this visit'}
-          />
-          <Check
-            ok={allPhotosInside}
-            label="Photo locations"
-            detail={`${photosInside} of ${inspection.photos.length} taken within ${PHOTO_GEOFENCE_METERS} m of their peg`}
-          />
-        </ul>
+        {visit ? (
+          <>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600">
+              <Check
+                ok={visit.boundaryPegsIntact}
+                label="Boundary pegs"
+                detail={visit.boundaryPegsIntact ? `All ${pegs.length} in place` : 'One or more disturbed'}
+              />
+              <Check ok={!visit.debrisFound} label="Dumping or debris" detail={visit.debrisFound ? 'Found on the plot' : 'None found'} />
+              <Check
+                ok={visit.neighborInquiryConducted}
+                label="Neighbours"
+                detail={visit.neighborInquiryConducted ? visit.neighborFeedback || 'Spoken to' : 'Not spoken to this visit'}
+              />
+              <Check
+                ok={allPhotosInside}
+                label="Photo locations"
+                detail={`${photosInside} of ${photos.length} taken within ${PHOTO_GEOFENCE_METERS} m of their peg`}
+              />
+            </ul>
 
-        <div className="rounded p-2.5 bg-slate-50 border border-slate-200 text-xs">
-          <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wide mb-0.5">Inspector's notes</div>
-          <p className="text-slate-600 leading-relaxed text-[11px]">{inspection.notes}</p>
-        </div>
+            <div className="rounded p-2.5 bg-slate-50 border border-slate-200 text-xs">
+              <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wide mb-0.5">Inspector's notes</div>
+              <p className="text-slate-600 leading-relaxed text-[11px]">{visit.notes}</p>
+            </div>
 
-        <div>
-          <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wide mb-1.5">Photos</div>
-          <div className="grid grid-cols-2 gap-2">
-            {inspection.photos.map((photo, index) => {
-              const peg = pegs.find((p) => p.id === photo.pegId);
-              return (
-                <button
-                  key={`${photo.pegId}-${index}`}
-                  type="button"
-                  onClick={() => setOpenPhoto(photo)}
-                  className="relative rounded overflow-hidden border border-slate-200 h-24 bg-slate-100 group cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-900"
-                  aria-label={`Open photo of peg ${photo.pegId}`}
-                >
-                  <img src={photo.url} alt="" className="w-full h-full object-cover" />
-                  <span className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-medium gap-1.5">
-                    <Camera className="w-3.5 h-3.5" />
-                    View
-                  </span>
-                  <span className="absolute bottom-1 left-1.5 bg-slate-950/85 text-white text-[9px] font-mono px-1.5 py-0.5 rounded">
-                    Peg {photo.pegId}
-                    {peg ? ` (${peg.corner})` : ''}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+            {photos.length > 0 && (
+              <div>
+                <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wide mb-1.5">Photos</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {photos.map((photo, index) => {
+                    const peg = pegs.find((p) => p.id === photo.pegId);
+                    return (
+                      <button
+                        key={photo.photoId ?? `${photo.pegId}-${index}`}
+                        type="button"
+                        onClick={() => setOpenPhoto(photo)}
+                        className="relative rounded overflow-hidden border border-slate-200 h-24 bg-slate-100 group cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-900"
+                        aria-label={`Open photo of peg ${photo.pegId}`}
+                      >
+                        <PhotoImage propertyId={property.id} photo={photo} alt="" className="w-full h-full object-cover" />
+                        <span className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-medium gap-1.5">
+                          <Camera className="w-3.5 h-3.5" />
+                          View
+                        </span>
+                        <span className="absolute bottom-1 left-1.5 bg-slate-950/85 text-white text-[9px] font-mono px-1.5 py-0.5 rounded">
+                          Peg {photo.pegId}
+                          {peg ? ` (${peg.corner})` : ''}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="text-xs text-slate-500 leading-relaxed">
+            The inspector's first visit will check every corner peg, look for dumping and talk to neighbours. The report and
+            photos will appear here.
+          </p>
+        )}
       </div>
 
       <InspectionPhotoModal
         photo={openPhoto}
         property={property}
-        inspectorName={inspection.inspectorName}
+        inspectorName={visit?.inspectorName ?? inspection.inspectorName}
         onClose={() => setOpenPhoto(null)}
       />
     </section>

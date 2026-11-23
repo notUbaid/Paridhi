@@ -29,7 +29,8 @@ export function PlotBanner({ property, now }: { property: PropertyRecord; now: D
   const status = getPropertyStatus(alerts);
   const caveat = getCaveatStatus(property.legal, now);
   const flagged = property.revenue.flaggedMutations.length;
-  const { location, owner, camera, latestInspection } = property;
+  const { location, owner, camera, inspection } = property;
+  const visit = inspection.latestVisit;
 
   const caveatValue =
     caveat.state === 'NONE'
@@ -95,18 +96,24 @@ export function PlotBanner({ property, now }: { property: PropertyRecord; now: D
       <div className="mt-4 pt-3.5 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
         <Fact
           label="Land record"
-          value={flagged === 0 ? 'No flagged applications' : `${flagged} flagged application${flagged === 1 ? '' : 's'}`}
-          tone={flagged === 0 ? 'ok' : 'bad'}
+          value={
+            flagged > 0
+              ? `${flagged} flagged application${flagged === 1 ? '' : 's'}`
+              : property.revenue.lastCheckedAt
+                ? 'No flagged applications'
+                : 'Not checked yet'
+          }
+          tone={flagged > 0 ? 'bad' : property.revenue.lastCheckedAt ? 'ok' : 'warn'}
         />
         <Fact
           label="Camera"
-          value={camera.online ? `Online · battery ${Math.round(camera.batteryPercentage)}%` : 'Offline'}
-          tone={!camera.online || camera.changeDetected ? 'warn' : 'ok'}
+          value={!camera ? 'Not installed' : camera.online ? `Online · battery ${Math.round(camera.batteryPercentage)}%` : 'Offline'}
+          tone={!camera ? 'neutral' : !camera.online || camera.changeDetected ? 'warn' : 'ok'}
         />
         <Fact
           label="Last inspection"
-          value={formatRelative(latestInspection.inspectedAt, now)}
-          tone={latestInspection.boundaryPegsIntact && !latestInspection.debrisFound ? 'ok' : 'bad'}
+          value={visit ? formatRelative(visit.inspectedAt, now) : 'None yet'}
+          tone={!visit ? 'neutral' : visit.boundaryPegsIntact && !visit.debrisFound ? 'ok' : 'bad'}
         />
         <Fact
           label="Caveat (§148A CPC)"

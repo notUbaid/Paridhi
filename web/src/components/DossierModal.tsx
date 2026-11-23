@@ -118,8 +118,8 @@ export function DossierModal({ property, now, open, onClose }: DossierModalProps
 function DossierBody({ dossier, content, now }: { dossier: Dossier; content: SignedDossierContent; now: Date }) {
   const p = content.property;
   const caveat = getCaveatStatus(p.legal, new Date(content.generatedAt));
-  const inspection = p.latestInspection;
-  const photosInside = inspection.photos.filter((photo) => isPhotoWithinGeofence(photo, p.location.boundaryPegs)).length;
+  const visit = p.inspection.latestVisit;
+  const photosInside = (visit?.photos ?? []).filter((photo) => isPhotoWithinGeofence(photo, p.location.boundaryPegs)).length;
 
   return (
     <>
@@ -164,34 +164,39 @@ function DossierBody({ dossier, content, now }: { dossier: Dossier; content: Sig
             }
           />
           <Field label="Source" value={p.revenue.portalName} />
-          <Field label="Last checked" value={formatDateTime(p.revenue.lastCheckedAt)} />
+          <Field label="Last checked" value={p.revenue.lastCheckedAt ? formatDateTime(p.revenue.lastCheckedAt) : 'Not yet'} />
           <Field label="Encumbrance" value={p.revenue.encumbranceStatus} />
           <Field label="Property tax" value={p.revenue.propertyTaxStatus} />
         </div>
       </Section>
 
       <Section title="2. Camera">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Field label="Device" value={p.camera.deviceModel} />
-          <Field label="Status" value={p.camera.online ? 'Online' : 'Offline'} />
-          <Field label="Latest snapshot" value={formatDateTime(p.camera.latestSnapshot.capturedAt)} />
-          <Field label="Weekly comparison" value={p.camera.changeDetected ? 'Change flagged' : 'No change'} />
-        </div>
+        {p.camera ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Field label="Device" value={p.camera.deviceModel} />
+            <Field label="Status" value={p.camera.online ? 'Online' : 'Offline'} />
+            <Field label="Latest snapshot" value={formatDateTime(p.camera.latestSnapshot.capturedAt)} />
+            <Field label="Weekly comparison" value={p.camera.changeDetected ? 'Change flagged' : 'No change'} />
+          </div>
+        ) : (
+          <div className="text-slate-600">No camera installed. The plot is monitored by field inspections.</div>
+        )}
       </Section>
 
       <Section title="3. Last field inspection">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Field label="Inspector" value={`${inspection.inspectorName} (${inspection.inspectorId})`} />
-          <Field label="Visited" value={formatDateTime(inspection.inspectedAt)} />
-          <Field
-            label="Findings"
-            value={[
-              inspection.boundaryPegsIntact ? 'Pegs in place' : 'Pegs disturbed',
-              inspection.debrisFound ? 'debris found' : 'no debris'
-            ].join(', ')}
-          />
-          <Field label="Photos within 50 m of peg" value={`${photosInside} of ${inspection.photos.length}`} />
-        </div>
+        {visit ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Field label="Inspector" value={`${visit.inspectorName}${visit.inspectorId ? ` (${visit.inspectorId})` : ''}`} />
+            <Field label="Visited" value={formatDateTime(visit.inspectedAt)} />
+            <Field
+              label="Findings"
+              value={[visit.boundaryPegsIntact ? 'Pegs in place' : 'Pegs disturbed', visit.debrisFound ? 'debris found' : 'no debris'].join(', ')}
+            />
+            <Field label="Photos within 50 m of peg" value={`${photosInside} of ${visit.photos.length}`} />
+          </div>
+        ) : (
+          <div className="text-slate-600">No visit recorded yet. First visit due {formatDate(p.inspection.nextVisitDue)}.</div>
+        )}
       </Section>
 
       <Section title="4. Advocate and caveat">

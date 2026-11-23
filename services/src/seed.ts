@@ -3,7 +3,15 @@
  * number and record reference here is made up. Dates are generated relative to
  * `now`, so the demo always looks current instead of drifting out of date.
  */
-import type { BoundaryPeg, GeoPoint, InspectionPhoto, PropertyRecord } from '../../shared/types.js';
+import type {
+  BoundaryPeg,
+  GeoPoint,
+  InspectionPhoto,
+  InspectionSchedule,
+  InspectionVisit,
+  PropertyRecord,
+  StaffMember
+} from '../../shared/types.js';
 
 const MINUTE_MS = 60_000;
 const METERS_PER_DEGREE_LAT = 111_320;
@@ -63,6 +71,35 @@ function photoAt(peg: BoundaryPeg, url: string, capturedAt: string, offsetMeters
   };
 }
 
+/** The schedule for a plot whose latest visit was made by the inspector it is assigned to. */
+function schedule(visit: InspectionVisit, nextVisitDue: string): InspectionSchedule {
+  return {
+    inspectorName: visit.inspectorName,
+    inspectorId: visit.inspectorId,
+    nextVisitDue,
+    onDemandRequest: null,
+    latestVisit: visit
+  };
+}
+
+/** Sample staff for the open demo. These are not real accounts. */
+export const SAMPLE_STAFF: StaffMember[] = [
+  { userId: 'demo-ops', email: 'ops@example.com', role: 'ops', displayName: 'Paridhi Ops (sample)', staffCode: 'PRD-OPS-01' },
+  { userId: 'demo-insp-104', email: 'ramesh.kumar@example.com', role: 'inspector', displayName: 'Ramesh Kumar', staffCode: 'PRD-INSP-104' },
+  { userId: 'demo-insp-208', email: 'manjunath.gowda@example.com', role: 'inspector', displayName: 'Manjunath Gowda', staffCode: 'PRD-INSP-208' },
+  { userId: 'demo-insp-312', email: 'gurinder.singh@example.com', role: 'inspector', displayName: 'Gurinder Singh', staffCode: 'PRD-INSP-312' },
+  { userId: 'demo-adv-ts', email: 'subba.rao@example.com', role: 'advocate', displayName: 'Adv. K. V. Subba Rao', staffCode: 'TS/0000/1998' },
+  { userId: 'demo-adv-kar', email: 'venkatesh@example.com', role: 'advocate', displayName: 'Adv. C. R. Venkatesh', staffCode: 'KAR/0000/2004' },
+  { userId: 'demo-adv-pb', email: 'sandhu@example.com', role: 'advocate', displayName: 'Adv. Baldev S. Sandhu', staffCode: 'P/0000/2001' }
+];
+
+/** Which sample staff are assigned to which sample plot, in the open demo. */
+export const SAMPLE_ASSIGNMENTS: Record<string, { inspectorUserId: string; advocateUserId: string }> = {
+  'prop-shamshabad-412': { inspectorUserId: 'demo-insp-104', advocateUserId: 'demo-adv-ts' },
+  'prop-devanahalli-88': { inspectorUserId: 'demo-insp-208', advocateUserId: 'demo-adv-kar' },
+  'prop-mohali-122': { inspectorUserId: 'demo-insp-312', advocateUserId: 'demo-adv-pb' }
+};
+
 const FIELD_PHOTO = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80';
 const TREE_LINE_PHOTO = 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=1200&q=80';
 
@@ -120,7 +157,7 @@ export function createSeedProperties(now: Date = new Date()): PropertyRecord[] {
         changeDetected: false,
         changeNotes: 'No new material, vehicles or structures compared with last week. All four boundary pegs visible.'
       },
-      latestInspection: {
+      inspection: schedule({
         id: 'insp-shamshabad-latest',
         inspectedAt: ago({ days: 3, hours: 5 }),
         inspectorName: 'Ramesh Kumar',
@@ -134,9 +171,7 @@ export function createSeedProperties(now: Date = new Date()): PropertyRecord[] {
           photoAt(shamshabadPegs[0], FIELD_PHOTO, ago({ days: 3, hours: 5 })),
           photoAt(shamshabadPegs[2], TREE_LINE_PHOTO, ago({ days: 3, hours: 4, minutes: 51 }))
         ],
-        nextVisitDue: ahead({ days: 26 }),
-        onDemandRequest: null
-      },
+      }, ahead({ days: 26 })),
       revenue: {
         portalName: 'Bhu Bharati (Telangana land records)',
         portalUrl: 'https://bhubharati.telangana.gov.in',
@@ -225,7 +260,7 @@ export function createSeedProperties(now: Date = new Date()): PropertyRecord[] {
         changeDetected: false,
         changeNotes: 'Corner markers in place. Construction on the neighbouring site has not crossed the boundary.'
       },
-      latestInspection: {
+      inspection: schedule({
         id: 'insp-devanahalli-latest',
         inspectedAt: ago({ days: 6, hours: 2 }),
         inspectorName: 'Manjunath Gowda',
@@ -236,9 +271,7 @@ export function createSeedProperties(now: Date = new Date()): PropertyRecord[] {
         neighborFeedback: 'Met the layout security supervisor. No visitors to this site in the past month.',
         notes: 'Concrete corner pegs intact. Cleared leaves along the road frontage.',
         photos: [photoAt(devanahalliPegs[1], TREE_LINE_PHOTO, ago({ days: 6, hours: 2 }), 4)],
-        nextVisitDue: ahead({ days: 23 }),
-        onDemandRequest: null
-      },
+      }, ahead({ days: 23 })),
       revenue: {
         portalName: 'E-Swathu (Karnataka rural property records)',
         portalUrl: 'https://eswathu.karnataka.gov.in',
@@ -249,6 +282,7 @@ export function createSeedProperties(now: Date = new Date()): PropertyRecord[] {
         recordStatus: 'Form 11B issued by Gram Panchayat',
         flaggedMutations: [
           {
+            id: 'mut-sample-0412',
             reference: 'SAMPLE-KT-2026-0412',
             filedOn: ago({ days: 4 }),
             description: 'Khata transfer application citing a sale deed the owners did not sign'
@@ -325,7 +359,7 @@ export function createSeedProperties(now: Date = new Date()): PropertyRecord[] {
         changeDetected: false,
         changeNotes: 'GMADA demarcation pillars in place. No vehicles or soil heaps.'
       },
-      latestInspection: {
+      inspection: schedule({
         id: 'insp-mohali-latest',
         inspectedAt: ago({ days: 10, hours: 4 }),
         inspectorName: 'Gurinder Singh',
@@ -336,9 +370,7 @@ export function createSeedProperties(now: Date = new Date()): PropertyRecord[] {
         neighborFeedback: 'Spoke with the owner of the plot opposite. Nothing unusual reported.',
         notes: 'All corner pegs inspected. Sector signage checked.',
         photos: [photoAt(mohaliPegs[3], FIELD_PHOTO, ago({ days: 10, hours: 4 }), 5)],
-        nextVisitDue: ahead({ days: 19 }),
-        onDemandRequest: null
-      },
+      }, ahead({ days: 19 })),
       revenue: {
         portalName: 'Punjab Jamabandi land records',
         portalUrl: 'https://jamabandi.punjab.gov.in',

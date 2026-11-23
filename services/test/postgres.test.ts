@@ -124,8 +124,8 @@ describe('Postgres storage with owner sign-in', () => {
     assert.equal((await server.get('/api/properties/prop-shamshabad-412-b/dossier', headers)).status, 404);
     assert.equal((await server.post('/api/properties/prop-shamshabad-412-b/inspection-requests', {}, headers)).status, 404);
 
-    const untouched = await store.getProperty('prop-shamshabad-412-b', OWNER_B);
-    assert.equal(untouched?.latestInspection.onDemandRequest, null);
+    const untouched = await store.getProperty('prop-shamshabad-412-b', { kind: 'owner', userId: OWNER_B });
+    assert.equal(untouched?.inspection.onDemandRequest, null);
   });
 
   test('changes are saved to the database with their activity', async () => {
@@ -134,7 +134,7 @@ describe('Postgres storage with owner sign-in', () => {
     assert.equal(created.status, 201);
 
     const reloaded = (await server.get('/api/properties/prop-shamshabad-412-a', headers)).body.property as PropertyRecord;
-    assert.equal(reloaded.latestInspection.onDemandRequest?.notes, 'Check NE peg');
+    assert.equal(reloaded.inspection.onDemandRequest?.notes, 'Check NE peg');
     assert.equal(reloaded.activity[0].title, 'On-demand inspection requested');
 
     const { rows } = await db.query<{ count: number }>(
@@ -145,18 +145,16 @@ describe('Postgres storage with owner sign-in', () => {
 
   test('a rejected change is rolled back', async () => {
     const headers = await as(OWNER_A);
-    const before = (await store.getProperty('prop-shamshabad-412-a', OWNER_A))!;
+    const before = (await store.getProperty('prop-shamshabad-412-a', { kind: 'owner', userId: OWNER_A }))!;
     const duplicate = await server.post('/api/properties/prop-shamshabad-412-a/inspection-requests', {}, headers);
     assert.equal(duplicate.status, 409);
-    const after = (await store.getProperty('prop-shamshabad-412-a', OWNER_A))!;
+    const after = (await store.getProperty('prop-shamshabad-412-a', { kind: 'owner', userId: OWNER_A }))!;
     assert.deepEqual(after, before);
   });
 
-  test('a registry check keeps the flagged mutation', async () => {
-    const { body } = await server.post('/api/properties/prop-devanahalli-88-a/registry-checks', {}, await as(OWNER_A));
-    assert.equal(body.property.revenue.flaggedMutations.length, 1);
-    const stored = await store.getProperty('prop-devanahalli-88-a', OWNER_A);
-    assert.equal(stored?.revenue.lastCheckedAt, FIXED_NOW.toISOString());
+  test('owners cannot record land record checks outside the demo', async () => {
+    const { status } = await server.post('/api/properties/prop-devanahalli-88-a/registry-checks', {}, await as(OWNER_A));
+    assert.equal(status, 404);
   });
 
   test('device incidents store signed, append-only evidence', async () => {
@@ -195,7 +193,7 @@ describe('Postgres storage with owner sign-in', () => {
         [`bulk-${crypto.randomUUID()}`, id, new Date(FIXED_NOW.getTime() + i * 60_000).toISOString(), `event ${i}`]
       );
     }
-    const property = (await store.getProperty(id, OWNER_A))!;
+    const property = (await store.getProperty(id, { kind: 'owner', userId: OWNER_A }))!;
     assert.equal(property.activity.length, 50);
     assert.equal(property.activity[0].title, 'event 59');
   });

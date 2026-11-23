@@ -7,7 +7,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { createApp, type CreateAppOptions } from '../src/app.js';
 import type { AppConfig } from '../src/config.js';
 import type { Database, QueryResult } from '../src/db.js';
-import { createSeedProperties } from '../src/seed.js';
+import { SAMPLE_ASSIGNMENTS, SAMPLE_STAFF, createSeedProperties } from '../src/seed.js';
 import { MemoryStore } from '../src/store.js';
 
 export const FIXED_NOW = new Date('2026-11-23T10:00:00.000Z');
@@ -17,11 +17,15 @@ export interface TestServer {
   close: () => Promise<void>;
   get: (path: string, headers?: Record<string, string>) => Promise<{ status: number; body: any }>;
   post: (path: string, body?: unknown, headers?: Record<string, string>) => Promise<{ status: number; body: any }>;
+  postRaw: (path: string, data: Buffer, contentType: string, headers?: Record<string, string>) => Promise<{ status: number; body: any }>;
+  del: (path: string, headers?: Record<string, string>) => Promise<{ status: number; body: any }>;
+  /** Raw GET, for binary responses such as photos. */
+  fetchRaw: (path: string, headers?: Record<string, string>) => Promise<Response>;
 }
 
 export async function startServer(overrides: Partial<AppConfig> = {}, options: CreateAppOptions = {}): Promise<TestServer> {
   const config: AppConfig = {
-    store: new MemoryStore(() => createSeedProperties(FIXED_NOW)),
+    store: new MemoryStore({ properties: () => createSeedProperties(FIXED_NOW), staff: SAMPLE_STAFF, assignments: SAMPLE_ASSIGNMENTS }),
     auth: null,
     deviceToken: null,
     signingKey: null,
@@ -55,8 +59,25 @@ export async function startServer(overrides: Partial<AppConfig> = {}, options: C
           body: typeof body === 'string' ? body : JSON.stringify(body ?? {}),
           signal: AbortSignal.timeout(5000)
         })
-      )
+      ),
+    postRaw: async (path, data, contentType, headers = {}) =>
+      parse(
+        await fetch(url + path, {
+          method: 'POST',
+          headers: { 'Content-Type': contentType, ...headers },
+          body: new Uint8Array(data),
+          signal: AbortSignal.timeout(5000)
+        })
+      ),
+    del: async (path, headers = {}) =>
+      parse(await fetch(url + path, { method: 'DELETE', headers, signal: AbortSignal.timeout(5000) })),
+    fetchRaw: (path, headers = {}) => fetch(url + path, { headers, signal: AbortSignal.timeout(5000) })
   };
+}
+
+/** Bytes that pass the JPEG signature check (not a full image). */
+export function fakeJpeg(seed = 'x'): Buffer {
+  return Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.from(`test-jpeg-${seed}`)]);
 }
 
 const MIGRATIONS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../supabase/migrations');

@@ -7,7 +7,8 @@ interface RevenueWatchCardProps {
   revenue: RevenueRecord;
   now: Date;
   checking: boolean;
-  onCheckNow: () => void;
+  /** Only the demo lets owners run a (simulated) check; otherwise staff record checks. */
+  onCheckNow?: () => void;
 }
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
@@ -51,6 +52,7 @@ export function RevenueWatchCard({ revenue, now, checking, onCheckNow }: Revenue
             State portal
             <ExternalLink className="w-3 h-3 text-slate-400" />
           </a>
+          {onCheckNow && (
           <button
             type="button"
             onClick={onCheckNow}
@@ -60,6 +62,7 @@ export function RevenueWatchCard({ revenue, now, checking, onCheckNow }: Revenue
             <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${checking ? 'animate-spin' : ''}`} />
             {checking ? 'Checking…' : 'Check now'}
           </button>
+          )}
         </div>
       </div>
 
@@ -69,8 +72,11 @@ export function RevenueWatchCard({ revenue, now, checking, onCheckNow }: Revenue
             <div>
               <div className="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Source</div>
               <div className="text-sm font-bold text-slate-900 mt-0.5">{revenue.portalName}</div>
-              <div className="text-xs text-slate-500 mt-0.5 font-mono" title={formatDateTime(revenue.lastCheckedAt)}>
-                Last checked {formatRelative(revenue.lastCheckedAt, now)}
+              <div
+                className="text-xs text-slate-500 mt-0.5 font-mono"
+                title={revenue.lastCheckedAt ? formatDateTime(revenue.lastCheckedAt) : undefined}
+              >
+                {revenue.lastCheckedAt ? `Last checked ${formatRelative(revenue.lastCheckedAt, now)}` : 'Not checked yet'}
               </div>
             </div>
             <div className="text-right">

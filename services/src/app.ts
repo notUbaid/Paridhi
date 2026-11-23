@@ -2,12 +2,21 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import express, { type NextFunction, type Request, type RequestHandler, type Response } from 'express';
 import { addDays, getCaveatStatus, getPropertyAlerts, getPropertyStatus } from '../../shared/domain.js';
-import type { ActivityEvent, Dossier, EvidenceRecord, HealthResponse, PropertyRecord } from '../../shared/types.js';
+import type { Dossier, EvidenceRecord, HealthResponse, PropertyRecord, Viewer } from '../../shared/types.js';
 import type { AppConfig } from './config.js';
 import { EvidenceSigner, merkleRoot } from './evidence.js';
-import { MAX_ACTIVITY, type OwnerScope, type UpdateContext } from './store.js';
+import {
+  HttpError,
+  bearerToken,
+  handle,
+  makeActivityAdder,
+  notFound,
+  readText,
+  safeEqual
+} from './http.js';
+import { createStaffRouter, staffScopeOf } from './staff.js';
+import { ALL, type Scope, type UpdateContext } from './store.js';
 
-const MAX_TEXT = 500;
 const ON_DEMAND_VISIT_HOURS = 48;
 
 export const INCIDENT_TYPES = [
@@ -21,58 +30,22 @@ export const INCIDENT_TYPES = [
 ] as const;
 type IncidentType = (typeof INCIDENT_TYPES)[number];
 
-class HttpError extends Error {
-  readonly status: number;
-
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-}
-
-const notFound = () => new HttpError(404, 'Property not found');
-
-function readText(body: unknown, field: string, { required = false, max = MAX_TEXT } = {}): string | undefined {
-  const value = (body as Record<string, unknown> | undefined)?.[field];
-  if (value === undefined || value === null || value === '') {
-    if (required) throw new HttpError(400, `"${field}" is required`);
-    return undefined;
-  }
-  if (typeof value !== 'string') throw new HttpError(400, `"${field}" must be a string`);
-  const trimmed = value.trim();
-  if (required && trimmed === '') throw new HttpError(400, `"${field}" is required`);
-  if (trimmed.length > max) throw new HttpError(400, `"${field}" must be at most ${max} characters`);
-  return trimmed || undefined;
-}
-
-function safeEqual(a: string, b: string): boolean {
-  const left = Buffer.from(a);
-  const right = Buffer.from(b);
-  return left.length === right.length && crypto.timingSafeEqual(left, right);
-}
-
-function bearerToken(req: Request): string {
-  const header = req.get('authorization') ?? '';
-  return header.startsWith('Bearer ') ? header.slice('Bearer '.length).trim() : '';
-}
-
-/** Express 4 does not catch rejected promises, so route them to the error handler. */
-const handle =
-  (fn: (req: Request, res: Response) => Promise<void>): RequestHandler =>
-  (req, res, next) => {
-    fn(req, res).catch(next);
-  };
-
 export interface CreateAppOptions {
   /** Directory with the built web client to serve for non-API routes (standalone server only). */
   staticDir?: string;
 }
+
+export const viewerOf = (res: Response): Viewer => res.locals.viewer as Viewer;
+
+/** The plots an owner may see: their own, or every sample plot in the demo. */
+const ownerScopeOf = (viewer: Viewer): Scope => (viewer.demo ? ALL : { kind: 'owner', userId: viewer.userId! });
 
 export function createApp(config: AppConfig, options: CreateAppOptions = {}) {
   const now = config.now ?? (() => new Date());
   const { store, auth } = config;
   const demoMode = store.kind === 'memory';
   const signer = new EvidenceSigner(config.signingKey);
+  const addActivity = makeActivityAdder(now);
 
   if (signer.ephemeral && !config.now) {
     console.warn(
@@ -80,32 +53,25 @@ export function createApp(config: AppConfig, options: CreateAppOptions = {}) {
     );
   }
 
-  function addActivity(property: PropertyRecord, event: Omit<ActivityEvent, 'id' | 'at'>): void {
-    const activity: ActivityEvent = { id: `act-${crypto.randomUUID()}`, at: now().toISOString(), ...event };
-    property.activity = [activity, ...property.activity].slice(0, MAX_ACTIVITY);
-  }
-
-  const ownerOf = (res: Response): OwnerScope => (res.locals.ownerId as string | undefined) ?? null;
-
   async function update<T>(
-    req: Request,
-    res: Response,
+    id: string,
+    scope: Scope,
     change: (property: PropertyRecord, ctx: UpdateContext) => T | Promise<T>
   ): Promise<{ property: PropertyRecord; result: T }> {
-    const updated = await store.updateProperty(String(req.params.id), ownerOf(res), change);
+    const updated = await store.updateProperty(id, scope, change);
     if (!updated) throw notFound();
     return updated;
   }
 
-  async function load(req: Request, res: Response): Promise<PropertyRecord> {
-    const property = await store.getProperty(String(req.params.id), ownerOf(res));
+  async function loadForOwner(req: Request, res: Response): Promise<PropertyRecord> {
+    const property = await store.getProperty(String(req.params.id), ownerScopeOf(viewerOf(res)));
     if (!property) throw notFound();
     return property;
   }
 
   const app = express();
   app.disable('x-powered-by');
-  app.use(express.json({ limit: '16kb' }));
+  app.use(express.json({ limit: '64kb' }));
 
   const api = express.Router();
   api.use((_req, res, next) => {
@@ -163,8 +129,9 @@ export function createApp(config: AppConfig, options: CreateAppOptions = {}) {
         throw new HttpError(400, '"capturedAt" must be an ISO 8601 timestamp');
       }
 
-      // Devices are not tied to an owner yet, so the shared token can report on any plot.
-      const { property, result: evidence } = await update(req, res, (p, ctx) => {
+      // Devices are not tied to a plot yet, so the shared token can report on any plot with a camera.
+      const { property, result: evidence } = await update(String(req.params.id), ALL, (p, ctx) => {
+        if (!p.camera) throw new HttpError(409, 'No camera is registered for this plot');
         const receivedAt = now().toISOString();
         const signed = signer.sign({
           kind: 'CAMERA_INCIDENT',
@@ -200,10 +167,12 @@ export function createApp(config: AppConfig, options: CreateAppOptions = {}) {
     })
   );
 
-  /* ---------- Owners (signed in, or the open demo) ---------- */
+  /* ---------- Everyone else: signed-in users, or the open demo ---------- */
 
-  const requireOwner: RequestHandler = (req, res, next) => {
+  const identify: RequestHandler = (req, res, next) => {
     if (!auth) {
+      // The open demo has no accounts: the viewer can use both the owner view and the staff console.
+      res.locals.viewer = { demo: true, userId: null, email: null, staffRole: 'ops' } satisfies Viewer;
       next();
       return;
     }
@@ -212,27 +181,36 @@ export function createApp(config: AppConfig, options: CreateAppOptions = {}) {
       next(new HttpError(401, 'Sign in required'));
       return;
     }
-    auth.verify(token).then(
-      (user) => {
-        res.locals.ownerId = user.id;
+    auth
+      .verify(token)
+      .catch(() => {
+        throw new HttpError(401, 'Your session has expired. Please sign in again.');
+      })
+      .then(async (user) => {
+        const staff = await store.getStaffMember(user.id);
+        res.locals.staff = staff;
+        res.locals.viewer = { demo: false, userId: user.id, email: user.email, staffRole: staff?.role ?? null } satisfies Viewer;
         next();
-      },
-      () => next(new HttpError(401, 'Your session has expired. Please sign in again.'))
-    );
+      })
+      .catch(next);
   };
-  api.use(requireOwner);
+  api.use(identify);
+
+  api.get('/me', (_req, res) => {
+    res.json({ viewer: viewerOf(res) });
+  });
 
   api.get(
     '/properties',
     handle(async (_req, res) => {
-      res.json({ properties: await store.listProperties(ownerOf(res)) });
+      res.json({ properties: await store.listProperties(ownerScopeOf(viewerOf(res))) });
     })
   );
 
   api.get(
     '/properties/:id',
     handle(async (req, res) => {
-      res.json({ property: await load(req, res) });
+      res.json({ property: await loadForOwner(req, res) });
     })
   );
 
@@ -241,9 +219,9 @@ export function createApp(config: AppConfig, options: CreateAppOptions = {}) {
     '/properties/:id/inspection-requests',
     handle(async (req, res) => {
       const notes = readText(req.body, 'notes');
-      const { property } = await update(req, res, (p) => {
+      const { property } = await update(String(req.params.id), ownerScopeOf(viewerOf(res)), (p) => {
         const current = now();
-        const inspection = p.latestInspection;
+        const { inspection } = p;
         if (inspection.onDemandRequest && new Date(inspection.onDemandRequest.targetVisitBy) > current) {
           throw new HttpError(409, 'An on-demand visit is already scheduled for this plot');
         }
@@ -265,42 +243,12 @@ export function createApp(config: AppConfig, options: CreateAppOptions = {}) {
     })
   );
 
-  // Re-check the land record. There is no portal integration yet, so this re-reads the
-  // stored record; it never clears flags that are already there.
-  api.post(
-    '/properties/:id/registry-checks',
-    handle(async (req, res) => {
-      const { property } = await update(req, res, (p) => {
-        const { revenue } = p;
-        revenue.lastCheckedAt = now().toISOString();
-        const flagged = revenue.flaggedMutations.length;
-        addActivity(
-          p,
-          flagged === 0
-            ? {
-                category: 'REGISTRY',
-                title: `${revenue.portalName} checked`,
-                description: `${revenue.accountLabel} ${revenue.accountNumber} still shows ${revenue.recordedOwner}. No new mutation applications.`,
-                severity: 'SUCCESS'
-              }
-            : {
-                category: 'REGISTRY',
-                title: `${revenue.portalName} checked: ${flagged} application${flagged === 1 ? '' : 's'} still flagged`,
-                description: revenue.flaggedMutations.map((m) => `${m.reference}: ${m.description}`).join(' · '),
-                severity: 'ALERT'
-              }
-        );
-      });
-      res.json({ property });
-    })
-  );
-
   // Ask the retained advocate to file (or re-file) the caveat. Filing happens offline;
-  // the advocate confirms the new lodging date afterwards.
+  // the advocate confirms the new lodging date in the staff console.
   api.post(
     '/properties/:id/caveat-renewals',
     handle(async (req, res) => {
-      const { property } = await update(req, res, (p) => {
+      const { property } = await update(String(req.params.id), ownerScopeOf(viewerOf(res)), (p) => {
         const { legal } = p;
         if (getCaveatStatus(legal, now()).renewalRequested) {
           throw new HttpError(409, 'A caveat renewal has already been requested');
@@ -322,7 +270,7 @@ export function createApp(config: AppConfig, options: CreateAppOptions = {}) {
   api.get(
     '/properties/:id/evidence',
     handle(async (req, res) => {
-      const property = await load(req, res);
+      const property = await loadForOwner(req, res);
       const records = await store.listEvidence(property.id);
       res.json({ records, merkleRoot: merkleRoot(records.map((r) => r.sha256)) });
     })
@@ -332,7 +280,7 @@ export function createApp(config: AppConfig, options: CreateAppOptions = {}) {
   api.get(
     '/properties/:id/dossier',
     handle(async (req, res) => {
-      const property = await load(req, res);
+      const property = await loadForOwner(req, res);
       const generatedAt = now().toISOString();
       const evidence = await store.listEvidence(property.id);
       const evidenceMerkleRoot = merkleRoot(evidence.map((r) => r.sha256));
@@ -359,11 +307,67 @@ export function createApp(config: AppConfig, options: CreateAppOptions = {}) {
     })
   );
 
+  // Inspection photos, for the plot's owner and for staff who can see the plot.
+  api.get(
+    '/properties/:id/photos/:photoId',
+    handle(async (req, res) => {
+      const viewer = viewerOf(res);
+      const id = String(req.params.id);
+      const visible =
+        (await store.getProperty(id, ownerScopeOf(viewer))) ??
+        (viewer.staffRole ? await store.getProperty(id, staffScopeOf(viewer)) : undefined);
+      if (!visible) throw notFound();
+      const photo = await store.getPhoto(id, String(req.params.photoId));
+      if (!photo) throw new HttpError(404, 'Photo not found');
+      res.set({
+        'Content-Type': photo.meta.contentType,
+        'Content-Length': String(photo.data.length),
+        'Cache-Control': 'private, max-age=3600',
+        'X-Content-Type-Options': 'nosniff',
+        'Content-Security-Policy': "default-src 'none'",
+        ETag: `"${photo.meta.sha256}"`
+      });
+      res.send(photo.data);
+    })
+  );
+
+  /* ---------- Demo only ---------- */
+
   if (demoMode) {
+    // A simulated land record check from the owner view. With a database, checks are recorded by staff.
+    api.post(
+      '/properties/:id/registry-checks',
+      handle(async (req, res) => {
+        const { property } = await update(String(req.params.id), ALL, (p) => {
+          const { revenue } = p;
+          revenue.lastCheckedAt = now().toISOString();
+          const flagged = revenue.flaggedMutations.length;
+          addActivity(
+            p,
+            flagged === 0
+              ? {
+                  category: 'REGISTRY',
+                  title: `${revenue.portalName} checked`,
+                  description: `${revenue.accountLabel} ${revenue.accountNumber} still shows ${revenue.recordedOwner}. No new mutation applications.`,
+                  severity: 'SUCCESS'
+                }
+              : {
+                  category: 'REGISTRY',
+                  title: `${revenue.portalName} checked: ${flagged} application${flagged === 1 ? '' : 's'} still flagged`,
+                  description: revenue.flaggedMutations.map((m) => `${m.reference}: ${m.description}`).join(' · '),
+                  severity: 'ALERT'
+                }
+          );
+        });
+        res.json({ property });
+      })
+    );
+
     api.post(
       '/demo/properties/:id/simulate-alert',
       handle(async (req, res) => {
-        const { property } = await update(req, res, (p) => {
+        const { property } = await update(String(req.params.id), ALL, (p) => {
+          if (!p.camera) throw new HttpError(409, 'This plot has no camera');
           p.camera.changeDetected = true;
           p.camera.changeNotes = 'Simulated: weekly comparison shows new gravel near the north boundary peg.';
           addActivity(p, {
@@ -386,6 +390,10 @@ export function createApp(config: AppConfig, options: CreateAppOptions = {}) {
       })
     );
   }
+
+  /* ---------- Staff console ---------- */
+
+  api.use('/staff', createStaffRouter({ store, signer, now, addActivity, demoMode }));
 
   app.use('/api', api);
   app.use('/api', (_req, _res, next) => next(new HttpError(404, 'Not found')));

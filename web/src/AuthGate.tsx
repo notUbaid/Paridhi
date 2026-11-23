@@ -4,7 +4,7 @@ import type { HealthResponse } from '@shared/types';
 import { configureAuth } from './api';
 import { SignIn } from './components/SignIn';
 import { StatusScreen } from './components/StatusScreen';
-import { Dashboard } from './Dashboard';
+import { Shell } from './Shell';
 
 const clients = new Map<string, SupabaseClient>();
 
@@ -52,7 +52,7 @@ export default function AuthGate({ health, supabaseUrl, publishableKey }: AuthGa
   if (!session) return <SignIn supabase={supabase} />;
 
   return (
-    <Dashboard
+    <Shell
       key={session.user.id}
       health={health}
       account={{ email: session.user.email ?? 'Signed in', signOut: () => void supabase.auth.signOut() }}

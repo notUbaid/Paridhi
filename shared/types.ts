@@ -72,11 +72,16 @@ export interface CameraPod {
 }
 
 export interface InspectionPhoto {
-  url: string;
+  /** A photo uploaded to Paridhi, served from /api/properties/:id/photos/:photoId. */
+  photoId?: string;
+  /** SHA-256 of the uploaded file, computed by the server on arrival. */
+  sha256?: string;
+  /** An external image (sample data only). */
+  url?: string;
   /** The boundary peg the inspector photographed (BoundaryPeg.id). */
   pegId: string;
   capturedAt: string;
-  /** Position read from the photo's GPS metadata. */
+  /** Where the inspector's phone was when the photo was added. */
   position: GeoPoint;
 }
 
@@ -86,7 +91,7 @@ export interface OnDemandInspectionRequest {
   notes: string;
 }
 
-export interface FieldInspection {
+export interface InspectionVisit {
   id: string;
   inspectedAt: string;
   inspectorName: string;
@@ -97,11 +102,19 @@ export interface FieldInspection {
   neighborFeedback: string;
   notes: string;
   photos: InspectionPhoto[];
+}
+
+/** Who inspects the plot, when the next visit is due, and the most recent visit (if any). */
+export interface InspectionSchedule {
+  inspectorName: string;
+  inspectorId: string;
   nextVisitDue: string;
   onDemandRequest: OnDemandInspectionRequest | null;
+  latestVisit: InspectionVisit | null;
 }
 
 export interface MutationEntry {
+  id: string;
   reference: string;
   filedOn: string;
   description: string;
@@ -118,7 +131,8 @@ export interface RevenueRecord {
   recordStatus: string;
   /** Mutation applications on the record that the owner did not start. */
   flaggedMutations: MutationEntry[];
-  lastCheckedAt: string;
+  /** Null until the first check has been recorded. */
+  lastCheckedAt: string | null;
   propertyTaxStatus: string;
   encumbranceStatus: string;
 }
@@ -158,8 +172,9 @@ export interface PropertyRecord {
   marketValuationINR: number;
   location: PropertyLocation;
   owner: Owner;
-  camera: CameraPod;
-  latestInspection: FieldInspection;
+  /** Null until a camera is installed; a plot can be protected by inspections alone. */
+  camera: CameraPod | null;
+  inspection: InspectionSchedule;
   revenue: RevenueRecord;
   legal: LegalRetainer;
   activity: ActivityEvent[];
@@ -177,7 +192,7 @@ export interface SignedRecord {
 export interface EvidenceRecord extends SignedRecord {
   id: string;
   propertyId: string;
-  kind: 'CAMERA_INCIDENT';
+  kind: 'CAMERA_INCIDENT' | 'INSPECTION_VISIT';
   receivedAt: string;
 }
 
@@ -198,4 +213,41 @@ export interface HealthResponse {
   deviceIngestEnabled: boolean;
   signingKey: { keyId: string; ephemeral: boolean };
   auth: AuthInfo;
+}
+
+/* ---------- Staff ---------- */
+
+export type StaffRole = 'ops' | 'inspector' | 'advocate';
+
+export interface StaffMember {
+  userId: string;
+  email: string;
+  role: StaffRole;
+  displayName: string;
+  /** Inspector ID or advocate enrolment number, shown to owners. */
+  staffCode: string;
+}
+
+/** Who is using the app. In the open demo the viewer acts as ops. */
+export interface Viewer {
+  demo: boolean;
+  userId: string | null;
+  email: string | null;
+  staffRole: StaffRole | null;
+}
+
+/** A plot as staff see it, with who owns it and who is assigned. */
+export interface StaffProperty {
+  property: PropertyRecord;
+  ownerEmail: string | null;
+  inspectorUserId: string | null;
+  advocateUserId: string | null;
+}
+
+export interface UploadedPhoto {
+  photoId: string;
+  sha256: string;
+  pegId: string;
+  capturedAt: string;
+  position: GeoPoint;
 }

@@ -38,9 +38,11 @@ interface DashboardProps {
   health: HealthResponse;
   /** The signed-in owner, or null for the open demo. */
   account: Account | null;
+  /** Present for staff (and the demo): opens the staff console. */
+  onOpenStaffConsole?: () => void;
 }
 
-export function Dashboard({ health, account }: DashboardProps) {
+export function Dashboard({ health, account, onOpenStaffConsole }: DashboardProps) {
   const [properties, setProperties] = useState<PropertyRecord[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
@@ -138,7 +140,7 @@ export function Dashboard({ health, account }: DashboardProps) {
     notify(
       'SUCCESS',
       'Inspection requested',
-      `${updated.latestInspection.inspectorName} is assigned, with a target of a visit within 48 hours.`
+      `${updated.inspection.inspectorName} is assigned, with a target of a visit within 48 hours.`
     );
   };
 
@@ -173,7 +175,7 @@ export function Dashboard({ health, account }: DashboardProps) {
     }
   };
 
-  const demoAlertActive = property.camera.changeDetected;
+  const demoAlertActive = property.camera?.changeDetected ?? false;
   const handleToggleDemoAlert = async () => {
     setBusy('demo');
     try {
@@ -195,6 +197,7 @@ export function Dashboard({ health, account }: DashboardProps) {
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col">
       <Header
         account={account}
+        onOpenStaffConsole={onOpenStaffConsole}
         owner={property.owner}
         demoMode={demoMode}
         lastSyncedAt={lastSyncedAt}
@@ -202,7 +205,9 @@ export function Dashboard({ health, account }: DashboardProps) {
         onOpenHowItWorks={() => openModal('how-it-works')}
         onOpenDossier={() => openModal('dossier')}
         demoAlert={
-          demoMode ? { active: demoAlertActive, busy: busy === 'demo', onToggle: handleToggleDemoAlert } : undefined
+          demoMode && property.camera
+            ? { active: demoAlertActive, busy: busy === 'demo', onToggle: handleToggleDemoAlert }
+            : undefined
         }
       />
 
@@ -227,7 +232,7 @@ export function Dashboard({ health, account }: DashboardProps) {
               revenue={property.revenue}
               now={now}
               checking={busy === 'registry'}
-              onCheckNow={handleCheckRegistry}
+              onCheckNow={demoMode ? handleCheckRegistry : undefined}
             />
             <LegalActionCard
               legal={property.legal}

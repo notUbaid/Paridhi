@@ -86,7 +86,7 @@ describe('Owner actions', () => {
     const first = await server.post('/api/properties/prop-shamshabad-412/inspection-requests', { notes: 'Check the NW peg' });
     assert.equal(first.status, 201);
     const property: PropertyRecord = first.body.property;
-    assert.equal(property.latestInspection.onDemandRequest?.notes, 'Check the NW peg');
+    assert.equal(property.inspection.onDemandRequest?.notes, 'Check the NW peg');
     assert.equal(property.activity[0].category, 'INSPECTION');
 
     const second = await server.post('/api/properties/prop-shamshabad-412/inspection-requests', {});
