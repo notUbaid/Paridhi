@@ -5,8 +5,9 @@ import type { BoundaryPeg, PropertyRecord, UploadedPhoto } from '@shared/types';
 import { api, errorMessage } from '../api';
 import { Modal } from '../components/Modal';
 import { formatMeters } from '../format';
-import { FormActions, FormError, TextArea, YesNo } from './forms';
+import { FormActions, FormError, TextArea, YesNo } from '../ui/forms';
 import { currentPosition, prepareImage } from './image';
+import { buttonClass } from '../ui/Button';
 
 interface RecordVisitModalProps {
   property: PropertyRecord;
@@ -35,18 +36,18 @@ function PegRow({
 }) {
   const input = useRef<HTMLInputElement>(null);
   return (
-    <div className="rounded border border-slate-200 p-2.5 space-y-2">
+    <div className="rounded-lg border border-line p-2.5 space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <div className="text-xs font-medium text-slate-800">
-          Peg {peg.id} <span className="text-slate-400">({peg.corner})</span>
+        <div className="text-sm font-medium text-ink">
+          Peg {peg.id} <span className="text-faint">({peg.corner})</span>
         </div>
         <button
           type="button"
           disabled={busy}
           onClick={() => input.current?.click()}
-          className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-60 cursor-pointer"
+          className={buttonClass('secondary', 'sm')}
         >
-          <Camera className="w-3.5 h-3.5 text-slate-500" />
+          <Camera className="w-3.5 h-3.5 text-muted" />
           {busy ? 'Uploading…' : 'Add photo'}
         </button>
         <input
@@ -68,15 +69,15 @@ function PegRow({
             const distance = distanceMeters(photo.position, peg.position);
             const inside = distance <= PHOTO_GEOFENCE_METERS;
             return (
-              <li key={photo.photoId} className="relative rounded overflow-hidden border border-slate-200">
+              <li key={photo.photoId} className="relative rounded-lg overflow-hidden border border-line">
                 <img src={photo.previewUrl} alt={`Photo of peg ${peg.id}`} className="w-full h-20 object-cover" />
-                <div className={`px-1.5 py-1 text-[10px] font-mono ${inside ? 'text-emerald-800 bg-emerald-50' : 'text-red-800 bg-red-50'}`}>
+                <div className={`px-1.5 py-1 text-xs font-mono ${inside ? 'text-ok bg-ok-soft' : 'text-bad bg-bad-soft'}`}>
                   {formatMeters(distance)} from peg {inside ? '✓' : `(over ${PHOTO_GEOFENCE_METERS} m)`}
                 </div>
                 <button
                   type="button"
                   onClick={() => onRemove(photo.photoId)}
-                  className="absolute top-1 right-1 bg-white/90 rounded p-0.5 text-slate-600 hover:text-red-700 cursor-pointer"
+                  className="absolute top-1 right-1 bg-surface/90 rounded-lg p-0.5 text-muted hover:text-bad cursor-pointer"
                   aria-label="Remove photo from this visit"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -167,10 +168,10 @@ export function RecordVisitModal({ property, open, demo, onClose, onSaved }: Rec
       open={open}
       onClose={onClose}
       size="lg"
-      icon={<ClipboardCheck className="w-4 h-4 text-slate-700 shrink-0" />}
+      icon={<ClipboardCheck className="w-4 h-4 text-ink-soft shrink-0" />}
       title={`Record a visit: ${property.name}`}
     >
-      <form onSubmit={submit} className="p-5 space-y-4 text-xs">
+      <form onSubmit={submit} className="p-5 space-y-4 text-sm">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <YesNo label="Are all boundary pegs in place?" value={pegsIntact} onChange={setPegsIntact} />
           <YesNo label="Any dumping or debris?" value={debris} onChange={setDebris} yes="Found" no="None" />
@@ -196,8 +197,8 @@ export function RecordVisitModal({ property, open, demo, onClose, onSaved }: Rec
         />
 
         <div className="space-y-2">
-          <div className="text-[11px] font-medium text-slate-700">Photos of each corner peg</div>
-          <p className="text-[11px] text-slate-500">
+          <div className="text-[13px] font-medium text-ink-soft">Photos of each corner peg</div>
+          <p className="text-[13px] text-muted">
             Take each photo standing at the peg. Your phone's location is recorded with it and checked against the
             surveyed peg ({PHOTO_GEOFENCE_METERS} m).
           </p>
@@ -212,7 +213,7 @@ export function RecordVisitModal({ property, open, demo, onClose, onSaved }: Rec
             />
           ))}
           {missingPegs.length > 0 && photos.length > 0 && (
-            <p className="text-[11px] text-amber-800">No photo yet for {missingPegs.map((peg) => peg.id).join(', ')}.</p>
+            <p className="text-[13px] text-warn">No photo yet for {missingPegs.map((peg) => peg.id).join(', ')}.</p>
           )}
         </div>
 

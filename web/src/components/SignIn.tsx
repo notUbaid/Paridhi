@@ -1,11 +1,30 @@
 import { useState, type FormEvent } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Mail } from 'lucide-react';
+import type { PropertyLocation } from '@shared/types';
+import { SurveyPlate } from '../owner/SurveyPlate';
+import { Button } from '../ui/Button';
+import { FormError, TextField } from '../ui/forms';
+import { Wordmark } from '../ui/Wordmark';
 
 type Mode = 'password' | 'link';
 
-const inputClass =
-  'w-full rounded border border-slate-200 px-2.5 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900';
+/** A sample plot, drawn on the sign-in screen as an illustration. */
+const ILLUSTRATION: PropertyLocation = {
+  village: 'Sample plot',
+  mandalTaluk: '',
+  district: '',
+  state: 'Telangana',
+  cityNear: '',
+  center: { lat: 17.24, lng: 78.43 },
+  boundaryPegs: [
+    { id: 'P1', corner: 'NE', position: { lat: 17.24025, lng: 78.43048 } },
+    { id: 'P2', corner: 'SE', position: { lat: 17.23984, lng: 78.43041 } },
+    { id: 'P3', corner: 'SW', position: { lat: 17.2398, lng: 78.42952 } },
+    { id: 'P4', corner: 'NW', position: { lat: 17.24019, lng: 78.42958 } }
+  ],
+  boundaries: { north: 'Village road', east: 'Canal feeder', south: 'Sy. No. 413', west: 'Sy. No. 411' }
+};
 
 export function SignIn({ supabase }: { supabase: SupabaseClient }) {
   const [mode, setMode] = useState<Mode>('password');
@@ -46,102 +65,85 @@ export function SignIn({ supabase }: { supabase: SupabaseClient }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-[#f8fafc]">
-      <div className="w-full max-w-sm space-y-5">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded bg-slate-900 text-white flex items-center justify-center font-bold select-none">प</div>
-          <div>
-            <div className="text-base font-bold tracking-tight text-slate-900">PARIDHI</div>
-            <div className="text-xs text-slate-500">Land protection for owners abroad</div>
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] bg-paper">
+      <aside className="hidden lg:flex flex-col justify-between p-12 border-r border-line bg-sunken/60">
+        <Wordmark size="lg" />
+        <div className="max-w-lg">
+          <div className="rounded-card overflow-hidden border border-line shadow-card bg-surface">
+            <SurveyPlate location={ILLUSTRATION} surveyNumber="Sy. No. 412/A" />
           </div>
+          <h2 className="font-display text-[34px] leading-tight text-ink mt-8">Your land in India, watched over while you're away.</h2>
+          <ul className="mt-5 space-y-2 text-ink-soft">
+            <li>A local inspector walks the boundary every month and photographs every peg.</li>
+            <li>The land record is checked every week for applications you didn't make.</li>
+            <li>Your advocate keeps a court caveat in place and acts when something is flagged.</li>
+          </ul>
         </div>
+        <p className="text-sm text-faint">Illustration of a sample plot.</p>
+      </aside>
 
-        <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-4">
-          <h1 className="text-sm font-semibold text-slate-900">Sign in to see your plots</h1>
+      <main className="flex flex-col items-center justify-center p-6 sm:p-12">
+        <div className="w-full max-w-sm">
+          <div className="lg:hidden mb-10">
+            <Wordmark size="lg" />
+          </div>
+          <h1 className="font-display text-3xl text-ink">Sign in</h1>
+          <p className="text-muted mt-1">See your plots, inspection reports and documents.</p>
 
           {linkSent ? (
-            <div className="space-y-3 text-xs text-slate-600">
-              <p className="flex items-start gap-2">
-                <Mail className="w-4 h-4 text-slate-500 shrink-0" />
-                If {email.trim()} has a Paridhi account, a sign-in link is on its way. Open it on this device.
+            <div className="mt-8 rounded-card border border-line bg-surface p-5">
+              <Mail className="w-6 h-6 text-accent" />
+              <p className="text-ink mt-3">
+                If <strong className="font-medium">{email.trim()}</strong> has a Paridhi account, a sign-in link is on its
+                way. Open it on this device.
               </p>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-4 -ml-3"
                 onClick={() => {
                   setLinkSent(false);
                   setMode('password');
                 }}
-                className="underline text-slate-700 cursor-pointer"
               >
                 Back to sign in
-              </button>
+              </Button>
             </div>
           ) : (
-            <form onSubmit={submit} className="space-y-3 text-xs">
-              <div className="space-y-1">
-                <label htmlFor="signin-email" className="font-medium text-slate-700">
-                  Email
-                </label>
-                <input
-                  id="signin-email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-
+            <form onSubmit={submit} className="mt-8 space-y-4">
+              <TextField label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
               {mode === 'password' && (
-                <div className="space-y-1">
-                  <label htmlFor="signin-password" className="font-medium text-slate-700">
-                    Password
-                  </label>
-                  <input
-                    id="signin-password"
-                    type="password"
-                    autoComplete="current-password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className={inputClass}
-                  />
-                </div>
+                <TextField
+                  label="Password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
               )}
-
-              {error && (
-                <div role="alert" className="rounded border border-red-200 bg-red-50 text-red-800 px-3 py-2">
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={busy}
-                className="w-full py-2 rounded bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white text-xs font-semibold cursor-pointer"
-              >
+              <FormError message={error} />
+              <Button type="submit" variant="primary" disabled={busy} className="w-full">
                 {busy ? 'Please wait…' : mode === 'password' ? 'Sign in' : 'Email me a sign-in link'}
-              </button>
-
+              </Button>
               <button
                 type="button"
                 onClick={() => {
                   setMode(mode === 'password' ? 'link' : 'password');
                   setError(null);
                 }}
-                className="w-full text-center text-slate-600 hover:text-slate-900 underline cursor-pointer"
+                className="w-full text-center text-sm text-ink-soft hover:text-ink underline underline-offset-4 cursor-pointer"
               >
-                {mode === 'password' ? 'Email me a sign-in link instead' : 'Sign in with a password instead'}
+                {mode === 'password' ? 'Email me a sign-in link instead' : 'Use my password instead'}
               </button>
             </form>
           )}
-        </div>
 
-        <p className="text-[11px] text-slate-400 text-center">
-          Accounts are set up by Paridhi when your plot is surveyed. Contact us if you need access.
-        </p>
-      </div>
+          <p className="text-sm text-muted mt-10">
+            Accounts are set up by Paridhi when your plot is surveyed. Contact us if you need access.
+          </p>
+        </div>
+      </main>
     </div>
   );
 }

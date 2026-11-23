@@ -9,10 +9,10 @@ export interface ToastNotification {
 }
 
 const STYLES = {
-  SUCCESS: { icon: CheckCircle2, iconClass: 'text-emerald-600', border: 'border-emerald-300' },
-  INFO: { icon: Info, iconClass: 'text-slate-500', border: 'border-slate-300' },
-  ALERT: { icon: AlertTriangle, iconClass: 'text-amber-600', border: 'border-amber-300' },
-  ERROR: { icon: XCircle, iconClass: 'text-red-600', border: 'border-red-300' }
+  SUCCESS: { icon: CheckCircle2, iconClass: 'text-ok', bar: 'bg-ok' },
+  INFO: { icon: Info, iconClass: 'text-muted', bar: 'bg-ink' },
+  ALERT: { icon: AlertTriangle, iconClass: 'text-warn', bar: 'bg-warn' },
+  ERROR: { icon: XCircle, iconClass: 'text-bad', bar: 'bg-bad' }
 };
 
 export function Toast({ toast, onClose }: { toast: ToastNotification | null; onClose: () => void }) {
@@ -31,22 +31,21 @@ export function Toast({ toast, onClose }: { toast: ToastNotification | null; onC
       role={toast.type === 'ERROR' || toast.type === 'ALERT' ? 'alert' : 'status'}
       className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 sm:max-w-sm sm:w-full"
     >
-      <div className={`p-3.5 rounded-lg border bg-white shadow-xl ${style.border}`}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-2.5">
-            <Icon className={`w-4 h-4 shrink-0 ${style.iconClass}`} />
-            <div>
-              <div className="text-xs font-bold leading-none mb-1 text-slate-900">{toast.title}</div>
-              <div className="text-[11px] text-slate-600 leading-relaxed">{toast.message}</div>
-            </div>
+      <div className="relative overflow-hidden rounded-xl border border-line bg-surface shadow-pop pl-5 pr-3 py-3.5">
+        <span className={`absolute left-0 top-0 bottom-0 w-1 ${style.bar}`} aria-hidden />
+        <div className="flex items-start gap-3">
+          <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${style.iconClass}`} />
+          <div className="flex-1 min-w-0">
+            <div className="font-medium text-ink">{toast.title}</div>
+            <div className="text-sm text-muted mt-0.5">{toast.message}</div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 p-0.5 rounded transition-colors cursor-pointer"
+            className="text-faint hover:text-ink p-1 rounded-md transition-colors cursor-pointer"
             aria-label="Dismiss notification"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>

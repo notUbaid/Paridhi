@@ -3,7 +3,8 @@ import { Users } from 'lucide-react';
 import type { StaffMember, StaffRole, Viewer } from '@shared/types';
 import { api, errorMessage } from '../api';
 import { Modal } from '../components/Modal';
-import { FormError, SelectField, TextField } from './forms';
+import { FormError, SelectField, TextField } from '../ui/forms';
+import { buttonClass } from '../ui/Button';
 
 const ROLE_LABEL: Record<StaffRole, string> = { ops: 'Ops', inspector: 'Inspector', advocate: 'Advocate' };
 
@@ -58,13 +59,13 @@ export function TeamModal({ viewer, onClose, onChanged }: TeamModalProps) {
   };
 
   return (
-    <Modal open onClose={onClose} size="lg" icon={<Users className="w-4 h-4 text-slate-700 shrink-0" />} title="Team">
-      <div className="p-5 space-y-5 text-xs">
+    <Modal open onClose={onClose} size="lg" icon={<Users className="w-4 h-4 text-ink-soft shrink-0" />} title="Team">
+      <div className="p-5 space-y-5 text-sm">
         {!staff ? (
-          <p className="text-slate-500">Loading…</p>
+          <p className="text-muted">Loading…</p>
         ) : (
           <table className="w-full text-left">
-            <thead className="text-[10px] uppercase text-slate-400">
+            <thead className="text-xs uppercase text-faint">
               <tr>
                 <th className="py-1.5 font-semibold">Name</th>
                 <th className="py-1.5 font-semibold">Role</th>
@@ -72,18 +73,18 @@ export function TeamModal({ viewer, onClose, onChanged }: TeamModalProps) {
                 <th className="py-1.5" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-line">
               {staff.map((member) => (
                 <tr key={member.userId}>
                   <td className="py-2">
-                    <div className="font-medium text-slate-900">{member.displayName}</div>
-                    <div className="text-[11px] text-slate-500">{member.email}</div>
+                    <div className="font-medium text-ink">{member.displayName}</div>
+                    <div className="text-[13px] text-muted">{member.email}</div>
                   </td>
                   <td className="py-2">{ROLE_LABEL[member.role]}</td>
-                  <td className="py-2 font-mono text-[11px]">{member.staffCode || '–'}</td>
+                  <td className="py-2 font-mono text-[13px]">{member.staffCode || '–'}</td>
                   <td className="py-2 text-right">
                     {!viewer.demo && member.userId !== viewer.userId && (
-                      <button type="button" onClick={() => void remove(member)} className="text-red-700 hover:underline cursor-pointer">
+                      <button type="button" onClick={() => void remove(member)} className="text-bad hover:underline cursor-pointer">
                         Remove
                       </button>
                     )}
@@ -95,11 +96,11 @@ export function TeamModal({ viewer, onClose, onChanged }: TeamModalProps) {
         )}
 
         {viewer.demo ? (
-          <p className="text-slate-500">The demo uses a fixed sample team. With a database, ops staff can add and remove people here.</p>
+          <p className="text-muted">The demo uses a fixed sample team. With a database, ops staff can add and remove people here.</p>
         ) : (
-          <form onSubmit={add} className="space-y-3 border-t border-slate-100 pt-4">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-900">Give someone staff access</div>
-            <p className="text-[11px] text-slate-500">
+          <form onSubmit={add} className="space-y-3 border-t border-line pt-4">
+            <div className="text-[13px] font-bold uppercase tracking-wider text-ink">Give someone staff access</div>
+            <p className="text-[13px] text-muted">
               They need an account first (Supabase Authentication, Users). Adding an existing staff member again updates
               their role.
             </p>
@@ -114,7 +115,7 @@ export function TeamModal({ viewer, onClose, onChanged }: TeamModalProps) {
               <TextField label="ID / enrolment no." value={draft.staffCode} onChange={(e) => setDraft({ ...draft, staffCode: e.target.value })} maxLength={40} />
             </div>
             <div className="flex justify-end">
-              <button type="submit" disabled={busy} className="px-4 py-2 rounded font-semibold bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white cursor-pointer">
+              <button type="submit" disabled={busy} className={buttonClass('primary')}>
                 {busy ? 'Saving…' : 'Add to team'}
               </button>
             </div>

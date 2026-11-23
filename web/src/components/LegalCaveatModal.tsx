@@ -3,6 +3,7 @@ import { CAVEAT_VALIDITY_DAYS, getCaveatStatus } from '@shared/domain';
 import type { PropertyRecord } from '@shared/types';
 import { formatDate } from '../format';
 import { Modal } from './Modal';
+import { buttonClass } from '../ui/Button';
 
 interface LegalCaveatModalProps {
   property: PropertyRecord;
@@ -21,11 +22,11 @@ export function LegalCaveatModal({ property, now, open, onClose }: LegalCaveatMo
       open={open}
       onClose={onClose}
       size="lg"
-      icon={<Scale className="w-4 h-4 text-slate-700 shrink-0" />}
+      icon={<Scale className="w-4 h-4 text-ink-soft shrink-0" />}
       title="Caveat under Section 148A CPC: draft"
       footer={
         <>
-          <span className="text-xs text-slate-600">
+          <span className="text-sm text-muted">
             {legal.caveat && caveat.expiresOn
               ? `Current caveat lodged ${formatDate(legal.caveat.lodgedOn)}; ${
                   caveat.state === 'EXPIRED' ? 'lapsed' : 'lapses'
@@ -36,7 +37,7 @@ export function LegalCaveatModal({ property, now, open, onClose }: LegalCaveatMo
             <button
               type="button"
               onClick={() => window.print()}
-              className="px-3 py-1.5 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium flex items-center gap-1.5 cursor-pointer"
+              className={buttonClass('secondary', 'sm')}
             >
               <Printer className="w-3.5 h-3.5" />
               Print draft
@@ -44,7 +45,7 @@ export function LegalCaveatModal({ property, now, open, onClose }: LegalCaveatMo
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium cursor-pointer"
+              className={buttonClass('primary', 'sm')}
             >
               Close
             </button>
@@ -52,21 +53,21 @@ export function LegalCaveatModal({ property, now, open, onClose }: LegalCaveatMo
         </>
       }
     >
-      <div className="p-6 space-y-4 text-slate-800 text-xs leading-relaxed">
-        <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900 text-[11px]">
+      <div className="p-6 space-y-4 text-ink text-sm leading-relaxed">
+        <div className="rounded-lg border border-warn-line bg-warn-soft px-3 py-2 text-warn text-[13px]">
           Draft for your advocate to review and adapt. It has not been filed. The advocate decides the court, the
           parties to be served and the final wording.
         </div>
 
-        <div className="text-center border-b border-slate-200 pb-4 font-serif">
-          <div className="font-bold uppercase tracking-wide text-slate-900 text-sm">In the court of the {court}</div>
-          <div className="text-slate-600 mt-0.5">
+        <div className="text-center border-b border-line pb-4 font-display">
+          <div className="font-bold uppercase tracking-wide text-ink text-sm">In the court of the {court}</div>
+          <div className="text-muted mt-0.5">
             {location.district} district, {location.state}
           </div>
-          <div className="text-slate-500 text-[11px] mt-1">Caveat under Section 148A of the Code of Civil Procedure, 1908</div>
+          <div className="text-muted text-[13px] mt-1">Caveat under Section 148A of the Code of Civil Procedure, 1908</div>
         </div>
 
-        <div className="space-y-3 font-serif">
+        <div className="space-y-3 font-display">
           <p>
             <span className="font-sans font-bold">Caveator:</span> {owner.name}, residing at {owner.overseasCity},{' '}
             {owner.overseasCountry}, through counsel {legal.advocateName} (enrolment no. {legal.enrolmentNumber}).
@@ -95,8 +96,8 @@ export function LegalCaveatModal({ property, now, open, onClose }: LegalCaveatMo
             </li>
           </ol>
 
-          <div className="bg-slate-50 p-3 rounded border border-slate-200 font-sans text-[11px] space-y-1">
-            <div className="font-semibold text-slate-900">Schedule of property</div>
+          <div className="bg-paper p-3 rounded-lg border border-line font-sans text-[13px] space-y-1">
+            <div className="font-semibold text-ink">Schedule of property</div>
             <div>Survey number: {property.surveyNumber}</div>
             <div>Extent: {property.plotSizeDisplay}</div>
             <div>

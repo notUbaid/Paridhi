@@ -8,15 +8,19 @@ import {
 } from '@shared/domain';
 import type { HealthResponse, MutationEntry, PropertyRecord, StaffMember, StaffProperty, StaffRole, Viewer } from '@shared/types';
 import { api, errorMessage } from '../api';
-import { StatusPill } from '../components/StatusPill';
+import { Badge, StatusBadge } from '../ui/Badge';
 import { StatusScreen } from '../components/StatusScreen';
 import { Toast, type ToastNotification } from '../components/Toast';
-import type { Account } from '../Dashboard';
+import type { Account } from '../session';
 import { formatDate, formatDateTime, formatRelative } from '../format';
 import { ConfirmCaveatModal, FlagMutationModal, RecordCheckModal, ResolveFlagModal } from './ActionModals';
 import { AddPlotModal } from './AddPlotModal';
 import { RecordVisitModal } from './RecordVisitModal';
 import { TeamModal } from './TeamModal';
+import { Button, buttonClass } from '../ui/Button';
+import { Card as UICard } from '../ui/Card';
+import { Menu, MenuItem } from '../ui/Menu';
+import { Wordmark } from '../ui/Wordmark';
 
 const ROLE_LABEL: Record<StaffRole, string> = { ops: 'Ops', inspector: 'Inspector', advocate: 'Advocate' };
 const STATUS_ORDER: Record<PropertyStatus, number> = { ACTION_REQUIRED: 0, ATTENTION_NEEDED: 1, ALL_CLEAR: 2 };
@@ -131,45 +135,54 @@ export default function StaffConsole({ health, viewer, account, onOpenOwnerView 
   const selected = data.properties.find((sp) => sp.property.id === selectedId) ?? rows[0]?.sp ?? null;
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col">
-      <header className="border-b border-slate-200 bg-white px-4 sm:px-6 py-3">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded bg-slate-900 text-white flex items-center justify-center font-bold select-none">प</div>
-            <div className="flex items-center gap-2">
-              <span className="text-base font-bold tracking-tight">PARIDHI</span>
-              <span className="text-slate-300 text-xs">/</span>
-              <span className="text-xs text-slate-500 font-medium">Staff console</span>
-              <span className="text-[11px] font-mono px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50 text-slate-700">
-                {viewer.demo ? 'Ops (demo)' : ROLE_LABEL[role]}
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center flex-wrap gap-2 text-[11px]">
+    <div className="min-h-screen flex flex-col">
+      <header className="bg-surface/95 backdrop-blur-sm border-b border-line sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-3 sm:gap-5">
+          <Wordmark />
+          <div className="h-6 w-px bg-line hidden sm:block" aria-hidden />
+          <span className="text-sm font-medium text-ink whitespace-nowrap">
+            Staff<span className="hidden sm:inline"> console</span>
+          </span>
+          <Badge>{viewer.demo ? 'Ops (demo)' : ROLE_LABEL[role]}</Badge>
+          <div className="ml-auto flex items-center gap-1 sm:gap-2">
             {can.team && (
-              <HeaderButton onClick={() => setModal({ kind: 'team' })} icon={<Users className="w-3.5 h-3.5 text-slate-500" />}>
-                Team
-              </HeaderButton>
+              <Button variant="ghost" size="sm" onClick={() => setModal({ kind: 'team' })} icon={<Users className="w-4 h-4" />} aria-label="Team">
+                <span className="hidden sm:inline">Team</span>
+              </Button>
             )}
-            <HeaderButton onClick={onOpenOwnerView} icon={<ArrowLeft className="w-3.5 h-3.5 text-slate-500" />}>
-              Owner view
-            </HeaderButton>
+            <Button variant="ghost" size="sm" onClick={onOpenOwnerView} icon={<ArrowLeft className="w-4 h-4" />} aria-label="Owner view">
+              <span className="hidden sm:inline">Owner view</span>
+            </Button>
             {account && (
-              <div className="flex items-center gap-2 pl-2 ml-1 border-l border-slate-200">
-                <span className="text-slate-500 max-w-40 truncate" title={account.email}>
-                  {account.email}
-                </span>
-                <HeaderButton onClick={account.signOut} icon={<LogOut className="w-3.5 h-3.5 text-slate-400" />}>
-                  Sign out
-                </HeaderButton>
-              </div>
+              <Menu
+                triggerLabel="Account"
+                align="right"
+                width="w-64"
+                triggerClassName="w-8 h-8 rounded-full bg-ink text-surface text-sm font-medium flex items-center justify-center"
+                trigger={account.email.slice(0, 1).toUpperCase()}
+              >
+                {() => (
+                  <>
+                    <div className="px-3 py-2">
+                      <div className="eyebrow">Signed in as</div>
+                      <div className="text-sm text-ink truncate">{account.email}</div>
+                    </div>
+                    <MenuItem onSelect={account.signOut}>
+                      <span className="flex items-center gap-2 text-sm text-ink">
+                        <LogOut className="w-4 h-4 text-muted" />
+                        Sign out
+                      </span>
+                    </MenuItem>
+                  </>
+                )}
+              </Menu>
             )}
           </div>
         </div>
       </header>
 
       {health.demoMode && (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 sm:px-6 py-1.5 text-[11px] text-amber-900">
+        <div className="bg-warn-soft border-b border-warn-line px-4 sm:px-6 py-2 text-sm text-warn">
           <div className="max-w-7xl mx-auto">
             <strong className="font-semibold">Demo.</strong> You are acting as ops staff on sample plots. Changes are kept
             in memory and reset when the server restarts.
@@ -177,37 +190,37 @@ export default function StaffConsole({ health, viewer, account, onOpenOwnerView 
         </div>
       )}
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 items-start">
-        <aside className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-          <div className="p-3 border-b border-slate-200 space-y-2">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 items-start">
+        <aside className="bg-surface rounded-card border border-line shadow-card overflow-hidden lg:sticky lg:top-20">
+          <div className="p-4 border-b border-line space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">
-                Plots <span className="font-normal text-slate-400">({data.properties.length})</span>
+              <h2 className="font-display text-xl text-ink">
+                Plots <span className="text-faint">{data.properties.length}</span>
               </h2>
               {can.addPlot && (
                 <button
                   type="button"
                   onClick={() => setModal({ kind: 'add' })}
-                  className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-white cursor-pointer"
+                  className={buttonClass('primary', 'sm')}
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Add plot
                 </button>
               )}
             </div>
-            <label className="flex items-center gap-2 rounded border border-slate-200 px-2 py-1.5">
-              <Search className="w-3.5 h-3.5 text-slate-400" />
+            <label className="flex items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 py-2 focus-within:border-ink">
+              <Search className="w-4 h-4 text-faint" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search plot, survey no., owner"
                 aria-label="Search plots"
-                className="flex-1 text-xs outline-none"
+                className="flex-1 text-sm outline-none bg-transparent placeholder:text-faint"
               />
             </label>
           </div>
           {rows.length === 0 ? (
-            <p className="p-4 text-xs text-slate-500">
+            <p className="p-4 text-sm text-muted">
               {data.properties.length === 0
                 ? role === 'ops'
                   ? 'No plots yet. Add the first one.'
@@ -215,25 +228,25 @@ export default function StaffConsole({ health, viewer, account, onOpenOwnerView 
                 : 'No plots match your search.'}
             </p>
           ) : (
-            <ul className="divide-y divide-slate-100 max-h-[70vh] overflow-y-auto">
+            <ul className="divide-y divide-line max-h-[70vh] overflow-y-auto">
               {rows.map(({ sp, status }) => (
                 <li key={sp.property.id}>
                   <button
                     type="button"
                     onClick={() => setSelectedId(sp.property.id)}
                     aria-current={selected?.property.id === sp.property.id}
-                    className={`w-full text-left p-3 space-y-1 cursor-pointer ${
-                      selected?.property.id === sp.property.id ? 'bg-slate-50' : 'hover:bg-slate-50/60'
+                    className={`w-full text-left px-4 py-3.5 space-y-1 cursor-pointer border-l-2 ${
+                      selected?.property.id === sp.property.id ? 'bg-paper border-accent' : 'border-transparent hover:bg-paper/60'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-semibold truncate">{sp.property.name}</span>
-                      <StatusPill status={status} compact />
+                      <span className="font-medium text-ink truncate">{sp.property.name}</span>
+                      <StatusBadge status={status} />
                     </div>
-                    <div className="text-[11px] text-slate-500 truncate">
+                    <div className="text-[13px] text-muted truncate">
                       {sp.property.surveyNumber} · {sp.property.location.village}, {sp.property.location.state}
                     </div>
-                    <div className="text-[10px] font-mono text-slate-400 truncate">
+                    <div className="text-xs text-faint truncate">
                       Visit due {formatDate(sp.property.inspection.nextVisitDue)} · {sp.property.inspection.inspectorName}
                     </div>
                   </button>
@@ -258,7 +271,7 @@ export default function StaffConsole({ health, viewer, account, onOpenOwnerView 
             }}
           />
         ) : (
-          <div className="text-xs text-slate-500">Select a plot.</div>
+          <div className="text-sm text-muted">Select a plot.</div>
         )}
       </main>
 
@@ -336,53 +349,27 @@ export default function StaffConsole({ health, viewer, account, onOpenOwnerView 
   );
 }
 
-function HeaderButton({ onClick, icon, children }: { onClick: () => void; icon: ReactNode; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex items-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 hover:text-slate-900 rounded px-2.5 py-1 font-medium cursor-pointer"
-    >
-      {icon}
-      {children}
-    </button>
-  );
-}
-
 function Card({ title, icon, action, children }: { title: string; icon: ReactNode; action?: ReactNode; children: ReactNode }) {
   return (
-    <section className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-slate-200 bg-slate-50/60 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="flex items-center gap-2 text-sm font-semibold">
-          {icon}
-          {title}
-        </h3>
-        {action && <div className="flex items-center gap-2">{action}</div>}
-      </div>
-      <div className="p-4 text-xs space-y-2.5">{children}</div>
-    </section>
+    <UICard title={title} icon={icon} action={action} bodyClassName="p-5 text-sm space-y-3">
+      {children}
+    </UICard>
   );
 }
 
 function ActionButton({ onClick, children, primary = false }: { onClick: () => void; children: ReactNode; primary?: boolean }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`text-[11px] font-medium px-2.5 py-1 rounded cursor-pointer ${
-        primary ? 'bg-slate-900 hover:bg-slate-800 text-white' : 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
-      }`}
-    >
+    <Button size="sm" variant={primary ? 'primary' : 'secondary'} onClick={onClick}>
       {children}
-    </button>
+    </Button>
   );
 }
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <span className="text-slate-500 shrink-0">{label}</span>
-      <span className="text-slate-900 text-right">{children}</span>
+      <span className="text-muted shrink-0">{label}</span>
+      <span className="text-ink text-right">{children}</span>
     </div>
   );
 }
@@ -404,29 +391,30 @@ function PlotPanel({ sp, staff, can, now, onOpen, onAssigned }: PlotPanelProps) 
   const pending = property.inspection.onDemandRequest;
 
   return (
-    <div className="space-y-4 min-w-0">
-      <section className="bg-white rounded-lg border border-slate-200 p-4 space-y-3">
+    <div className="space-y-6 min-w-0">
+      <section className="bg-surface rounded-card border border-line shadow-card p-5 sm:p-6 space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold tracking-tight">{property.name}</h2>
-            <div className="text-xs text-slate-500">
+            <div className="eyebrow">{property.location.village}, {property.location.state}</div>
+            <h2 className="font-display text-3xl leading-tight text-ink mt-1">{property.name}</h2>
+            <div className="text-sm text-muted">
               {property.surveyNumber} · {property.location.village}, {property.location.mandalTaluk}, {property.location.district},{' '}
               {property.location.state} · {property.areaAcres.toFixed(3)} acres
             </div>
-            <div className="text-xs text-slate-500 mt-0.5">
-              Owner: <span className="text-slate-800 font-medium">{property.owner.name}</span>
+            <div className="text-sm text-muted mt-0.5">
+              Owner: <span className="text-ink font-medium">{property.owner.name}</span>
               {sp.ownerEmail && <> · {sp.ownerEmail}</>} · {property.owner.overseasCity}
             </div>
           </div>
-          <StatusPill status={getPropertyStatus(alerts)} />
+          <StatusBadge status={getPropertyStatus(alerts)} />
         </div>
         {alerts.length > 0 && (
           <ul className="space-y-1">
             {alerts.map((alert) => (
               <li
                 key={alert.message}
-                className={`flex items-start gap-2 text-xs rounded px-2.5 py-1.5 border ${
-                  alert.level === 'ACTION' ? 'bg-red-50 border-red-200 text-red-900' : 'bg-amber-50 border-amber-200 text-amber-900'
+                className={`flex items-start gap-2 text-sm rounded-lg px-2.5 py-1.5 border ${
+                  alert.level === 'ACTION' ? 'bg-bad-soft border-bad-line text-bad' : 'bg-warn-soft border-warn-line text-warn'
                 }`}
               >
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
@@ -437,14 +425,14 @@ function PlotPanel({ sp, staff, can, now, onOpen, onAssigned }: PlotPanelProps) 
         )}
       </section>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <Card
           title="Inspection"
-          icon={<UserCheck className="w-4 h-4 text-slate-600" />}
+          icon={<UserCheck className="w-4 h-4 text-muted" />}
           action={can.visit && <ActionButton primary onClick={() => onOpen({ kind: 'visit' })}>Record a visit</ActionButton>}
         >
           {pending && (
-            <div className="rounded border border-amber-200 bg-amber-50 text-amber-900 p-2">
+            <div className="rounded-lg border border-warn-line bg-warn-soft text-warn p-2">
               Owner asked for an extra visit {formatRelative(pending.requestedAt, now)}, target by {formatDateTime(pending.targetVisitBy)}.
               {pending.notes && <> Note: “{pending.notes}”</>}
             </div>
@@ -464,7 +452,7 @@ function PlotPanel({ sp, staff, can, now, onOpen, onAssigned }: PlotPanelProps) 
 
         <Card
           title="Land record"
-          icon={<Landmark className="w-4 h-4 text-slate-600" />}
+          icon={<Landmark className="w-4 h-4 text-muted" />}
           action={
             can.registry && (
               <>
@@ -485,16 +473,16 @@ function PlotPanel({ sp, staff, can, now, onOpen, onAssigned }: PlotPanelProps) 
             {property.revenue.lastCheckedAt ? formatRelative(property.revenue.lastCheckedAt, now) : 'Not yet'}
           </Row>
           {property.revenue.flaggedMutations.map((mutation) => (
-            <div key={mutation.id} className="rounded border border-red-200 bg-red-50 text-red-900 p-2 space-y-1">
+            <div key={mutation.id} className="rounded-lg border border-bad-line bg-bad-soft text-bad p-2 space-y-1">
               <div className="font-semibold">
                 {mutation.reference} · filed {formatDate(mutation.filedOn)}
               </div>
-              <div className="text-[11px]">{mutation.description}</div>
+              <div className="text-[13px]">{mutation.description}</div>
               {can.resolve && (
                 <button
                   type="button"
                   onClick={() => onOpen({ kind: 'resolve', mutation })}
-                  className="text-[11px] underline cursor-pointer"
+                  className="text-[13px] underline cursor-pointer"
                 >
                   Record the outcome
                 </button>
@@ -505,17 +493,17 @@ function PlotPanel({ sp, staff, can, now, onOpen, onAssigned }: PlotPanelProps) 
 
         <Card
           title="Caveat"
-          icon={<Scale className="w-4 h-4 text-slate-600" />}
+          icon={<Scale className="w-4 h-4 text-muted" />}
           action={can.caveat && <ActionButton primary onClick={() => onOpen({ kind: 'caveat' })}>Confirm lodging</ActionButton>}
         >
           {caveat.renewalRequested && (
-            <div className="rounded border border-amber-200 bg-amber-50 text-amber-900 p-2">
+            <div className="rounded-lg border border-warn-line bg-warn-soft text-warn p-2">
               The owner asked for {property.legal.caveat ? 'a renewal' : 'a caveat'}. Confirm once it is lodged.
             </div>
           )}
           <Row label="Advocate">
             {property.legal.advocateName}
-            {property.legal.enrolmentNumber && <span className="text-slate-400"> ({property.legal.enrolmentNumber})</span>}
+            {property.legal.enrolmentNumber && <span className="text-faint"> ({property.legal.enrolmentNumber})</span>}
           </Row>
           <Row label="Current caveat">
             {property.legal.caveat
@@ -533,18 +521,18 @@ function PlotPanel({ sp, staff, can, now, onOpen, onAssigned }: PlotPanelProps) 
         <AssignmentCard sp={sp} staff={staff} editable={can.assign} onSave={onAssigned} />
       </div>
 
-      <Card title="Recent activity" icon={<ClipboardCheck className="w-4 h-4 text-slate-600" />}>
+      <Card title="Recent activity" icon={<ClipboardCheck className="w-4 h-4 text-muted" />}>
         {property.activity.length === 0 ? (
-          <p className="text-slate-500">No activity yet.</p>
+          <p className="text-muted">No activity yet.</p>
         ) : (
           <ol className="space-y-2">
             {property.activity.slice(0, 8).map((event) => (
               <li key={event.id} className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="font-medium text-slate-900">{event.title}</div>
-                  <div className="text-[11px] text-slate-600">{event.description}</div>
+                  <div className="font-medium text-ink">{event.title}</div>
+                  <div className="text-[13px] text-muted">{event.description}</div>
                 </div>
-                <time dateTime={event.at} title={formatDateTime(event.at)} className="text-[10px] font-mono text-slate-400 shrink-0">
+                <time dateTime={event.at} title={formatDateTime(event.at)} className="text-xs font-mono text-faint shrink-0">
                   {formatRelative(event.at, now)}
                 </time>
               </li>
@@ -588,7 +576,7 @@ function AssignmentCard({
   };
 
   return (
-    <Card title="Team for this plot" icon={<Users className="w-4 h-4 text-slate-600" />}>
+    <Card title="Team for this plot" icon={<Users className="w-4 h-4 text-muted" />}>
       {editable ? (
         <div className="space-y-2.5">
           {(
@@ -598,11 +586,11 @@ function AssignmentCard({
             ] as const
           ).map(([label, roleName, value, setter]) => (
             <label key={roleName} className="flex items-center justify-between gap-3">
-              <span className="text-slate-500">{label}</span>
+              <span className="text-muted">{label}</span>
               <select
                 value={value}
                 onChange={(e) => setter(e.target.value)}
-                className="rounded border border-slate-200 px-2 py-1 text-xs bg-white max-w-56"
+                className="rounded-lg border border-line px-2 py-1 text-sm bg-surface max-w-56"
               >
                 <option value="">Not assigned</option>
                 {staff
@@ -615,7 +603,7 @@ function AssignmentCard({
               </select>
             </label>
           ))}
-          {error && <div className="text-red-700">{error}</div>}
+          {error && <div className="text-bad">{error}</div>}
           {changed && (
             <div className="flex justify-end">
               <ActionButton primary onClick={() => void save()}>

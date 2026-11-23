@@ -5,7 +5,7 @@ import type { BoundaryPeg, IndianState, PropertyRecord, StaffMember } from '@sha
 import { api, errorMessage, type NewPlotInput } from '../api';
 import { Modal } from '../components/Modal';
 import { formatMeters } from '../format';
-import { FormActions, FormError, FormSection, SelectField, TextField, daysFromNowIso } from './forms';
+import { FormActions, FormError, FormSection, SelectField, TextField, daysFromNowIso } from '../ui/forms';
 
 const STATES: IndianState[] = ['Telangana', 'Karnataka', 'Punjab', 'Maharashtra', 'Tamil Nadu', 'Gujarat', 'Delhi-NCR'];
 
@@ -153,10 +153,10 @@ export function AddPlotModal({ staff, onClose, onSaved }: AddPlotModalProps) {
   };
 
   return (
-    <Modal open onClose={onClose} size="xl" icon={<MapPinned className="w-4 h-4 text-slate-700 shrink-0" />} title="Add a plot">
-      <form onSubmit={submit} className="p-5 space-y-5 text-xs">
+    <Modal open onClose={onClose} size="xl" icon={<MapPinned className="w-4 h-4 text-ink-soft shrink-0" />} title="Add a plot">
+      <form onSubmit={submit} className="p-5 space-y-5 text-sm">
         <FormSection title="Owner">
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[13px] text-muted">
             The owner needs an account first (Supabase Authentication, Users). They will see this plot when they sign in.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -199,11 +199,11 @@ export function AddPlotModal({ staff, onClose, onSaved }: AddPlotModalProps) {
             <TextField label="Near" value={form.cityNear} onChange={set('cityNear')} maxLength={120} placeholder="e.g. Hyderabad (18 km)" className="sm:col-span-4" />
           </div>
           <div className="space-y-1.5">
-            <div className="text-[11px] font-medium text-slate-700">Corner pegs (from the survey), clockwise from north-east</div>
+            <div className="text-[13px] font-medium text-ink-soft">Corner pegs (from the survey), clockwise from north-east</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {CORNERS.map((corner, i) => (
                 <div key={corner} className="flex items-end gap-2">
-                  <span className="text-[11px] font-mono text-slate-500 w-14 pb-2">
+                  <span className="text-[13px] font-mono text-muted w-14 pb-2">
                     P{i + 1} {corner}
                   </span>
                   <TextField
@@ -226,7 +226,7 @@ export function AddPlotModal({ staff, onClose, onSaved }: AddPlotModalProps) {
               ))}
             </div>
             {parsedPegs && (
-              <p className="text-[11px] text-slate-600 font-mono">
+              <p className="text-[13px] text-muted font-mono">
                 Area {polygonAreaAcres(parsedPegs).toFixed(3)} acres · sides{' '}
                 {parsedPegs
                   .map((peg, i) => formatMeters(distanceMeters(peg.position, parsedPegs[(i + 1) % 4].position)))

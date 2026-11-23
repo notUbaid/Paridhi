@@ -3,7 +3,8 @@ import { RefreshCw } from 'lucide-react';
 import type { HealthResponse, Viewer } from '@shared/types';
 import { api, errorMessage } from './api';
 import { StatusScreen } from './components/StatusScreen';
-import { Dashboard, type Account } from './Dashboard';
+import { OwnerView } from './owner/OwnerView';
+import type { Account } from './session';
 import { navigate, usePath } from './router';
 
 const StaffConsole = lazy(() => import('./staff/StaffConsole'));
@@ -57,7 +58,7 @@ export function Shell({ health, account }: ShellProps) {
   }
 
   return (
-    <Dashboard
+    <OwnerView
       health={health}
       account={account}
       onOpenStaffConsole={viewer.staffRole ? () => navigate('/staff') : undefined}

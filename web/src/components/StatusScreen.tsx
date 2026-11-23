@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { Button } from '../ui/Button';
+import { Wordmark } from '../ui/Wordmark';
 
 interface StatusScreenProps {
   title?: string;
@@ -9,19 +11,15 @@ interface StatusScreenProps {
 /** Full-page message for loading, errors and empty states. */
 export function StatusScreen({ title, message, action }: StatusScreenProps) {
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-[#f8fafc]">
-      <div className="bg-white border border-slate-200 rounded-lg p-6 max-w-sm w-full text-center space-y-3">
-        {title && <h1 className="text-sm font-semibold text-slate-900">{title}</h1>}
-        <p className="text-xs text-slate-500 leading-relaxed">{message}</p>
+    <div className="min-h-screen flex flex-col items-center justify-center gap-8 p-6 bg-paper">
+      <Wordmark />
+      <div className="bg-surface border border-line rounded-card shadow-card p-7 max-w-md w-full text-center">
+        {title && <h1 className="font-display text-2xl text-ink mb-2">{title}</h1>}
+        <p className={`leading-relaxed ${title ? 'text-muted' : 'text-ink-soft'}`}>{message}</p>
         {action && (
-          <button
-            type="button"
-            onClick={action.onClick}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium cursor-pointer"
-          >
-            {action.icon}
+          <Button variant="primary" onClick={action.onClick} icon={action.icon} className="mt-5">
             {action.label}
-          </button>
+          </Button>
         )}
       </div>
     </div>

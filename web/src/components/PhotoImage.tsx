@@ -43,11 +43,11 @@ export function PhotoImage({ propertyId, photo, alt, className }: PhotoImageProp
   if (photo.url) return <img src={photo.url} alt={alt} className={className} />;
   if (failed) {
     return (
-      <div className={`flex items-center justify-center bg-slate-100 text-slate-400 ${className ?? ''}`} role="img" aria-label={alt}>
+      <div className={`flex items-center justify-center bg-sunken text-faint ${className ?? ''}`} role="img" aria-label={alt}>
         <ImageOff className="w-5 h-5" />
       </div>
     );
   }
-  if (!objectUrl) return <div className={`bg-slate-100 animate-pulse ${className ?? ''}`} role="img" aria-label={alt} />;
+  if (!objectUrl) return <div className={`bg-sunken animate-pulse ${className ?? ''}`} role="img" aria-label={alt} />;
   return <img src={objectUrl} alt={alt} className={className} />;
 }

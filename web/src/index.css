@@ -1,5 +1,46 @@
 @import "tailwindcss";
 
+/*
+ * Paridhi design tokens.
+ * Warm "survey paper" surfaces, forest ink for text and primary actions, and one laterite
+ * accent (the colour of Indian red soil) for brand moments only. Status colours are muted
+ * and never used for decoration.
+ */
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Newsreader", "Iowan Old Style", Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-deva: "Tiro Devanagari Hindi", "Noto Serif Devanagari", serif;
+
+  --color-paper: #f4efe5;
+  --color-surface: #fffcf6;
+  --color-sunken: #ece5d7;
+  --color-line: #e1d8c6;
+  --color-line-strong: #cbbfa8;
+
+  --color-ink: #1d2b24;
+  --color-ink-soft: #3a4a41;
+  --color-muted: #66705f;
+  --color-faint: #959a88;
+
+  --color-accent: #a4532f;
+  --color-accent-soft: #f3e0d3;
+
+  --color-ok: #2e6a45;
+  --color-ok-soft: #e3efe2;
+  --color-ok-line: #bdd6bf;
+  --color-warn: #8f5d12;
+  --color-warn-soft: #f7ebd2;
+  --color-warn-line: #e6cf9c;
+  --color-bad: #a62b1c;
+  --color-bad-soft: #f8e2db;
+  --color-bad-line: #ebbbae;
+
+  --radius-card: 1rem;
+  --shadow-card: 0 1px 0 rgb(29 43 36 / 0.04), 0 8px 24px -12px rgb(29 43 36 / 0.12);
+  --shadow-pop: 0 2px 4px rgb(29 43 36 / 0.06), 0 24px 48px -16px rgb(29 43 36 / 0.28);
+}
+
 @layer base {
   :root {
     color-scheme: light;
@@ -7,33 +48,54 @@
 
   body {
     margin: 0;
-    padding: 0;
-    background-color: #f8fafc;
-    color: #0f172a;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
-    letter-spacing: -0.011em;
   }
 
   body.has-modal {
     overflow: hidden;
   }
 
-  code, pre, .font-mono {
-    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    letter-spacing: -0.02em;
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
   }
 
   ::selection {
-    background-color: #0f172a;
-    color: #ffffff;
+    background-color: var(--color-ink);
+    color: var(--color-surface);
+  }
+}
+
+@layer components {
+  /* Small caps-style label used above values and sections. */
+  .eyebrow {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-faint);
   }
 }
 
 /* Printing while a dialog is open prints only the dialog (dossier, caveat draft). */
 @media print {
+  body {
+    background: white;
+  }
   body.has-modal {
     overflow: visible;
   }

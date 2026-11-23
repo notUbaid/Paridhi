@@ -1,15 +1,16 @@
 import type { ReactNode } from 'react';
 import { Camera, HelpCircle, Landmark, Lock, Scale, ShieldCheck, UserCheck } from 'lucide-react';
 import { Modal } from './Modal';
+import { buttonClass } from '../ui/Button';
 
 function Part({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   return (
-    <div className="p-3.5 rounded border border-slate-200 bg-white space-y-1.5">
-      <div className="flex items-center gap-2 font-semibold text-slate-900">
-        <span className="w-6 h-6 rounded bg-slate-100 text-slate-700 flex items-center justify-center">{icon}</span>
+    <div className="p-3.5 rounded-lg border border-line bg-surface space-y-1.5">
+      <div className="flex items-center gap-2 font-semibold text-ink">
+        <span className="w-6 h-6 rounded-lg bg-sunken text-ink-soft flex items-center justify-center">{icon}</span>
         {title}
       </div>
-      <p className="text-slate-600">{children}</p>
+      <p className="text-muted">{children}</p>
     </div>
   );
 }
@@ -20,25 +21,25 @@ export function HowItWorksModal({ open, onClose }: { open: boolean; onClose: () 
       open={open}
       onClose={onClose}
       size="xl"
-      icon={<HelpCircle className="w-4 h-4 text-slate-700 shrink-0" />}
+      icon={<HelpCircle className="w-4 h-4 text-ink-soft shrink-0" />}
       title="How Paridhi works"
       footer={
         <>
-          <span className="text-xs text-slate-500">Proposed pricing: ₹4,999 / month per plot, including the camera.</span>
+          <span className="text-sm text-muted">Proposed pricing: ₹4,999 / month per plot, including the camera.</span>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium cursor-pointer"
+            className={buttonClass('primary', 'sm')}
           >
             Got it
           </button>
         </>
       }
     >
-      <div className="p-6 space-y-6 text-slate-800 text-xs leading-relaxed">
-        <section className="p-4 rounded bg-slate-50 border border-slate-200 space-y-2">
-          <h3 className="font-bold text-slate-900 text-sm">The problem</h3>
-          <p className="text-slate-600">
+      <div className="p-6 space-y-6 text-ink text-sm leading-relaxed">
+        <section className="p-4 rounded-lg bg-paper border border-line space-y-2">
+          <h3 className="font-display text-xl text-ink">The problem</h3>
+          <p className="text-muted">
             Vacant plots usually have no mains power, no internet and no compound wall, so ordinary home cameras don't
             work there. Encroachment tends to start small: dumped bricks or gravel, a boundary peg moved a foot, a tin
             shed. Fraud can also start on paper, with a mutation application at the revenue office. Owners living
@@ -47,7 +48,7 @@ export function HowItWorksModal({ open, onClose }: { open: boolean; onClose: () 
         </section>
 
         <section>
-          <h3 className="font-bold text-slate-900 text-sm mb-3">Four layers</h3>
+          <h3 className="font-display text-xl text-ink mb-3">Four layers</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Part icon={<Camera className="w-3.5 h-3.5" />} title="1. Solar 4G camera">
               An off-the-shelf solar 4G camera on a 4.5 m pole. It uploads scheduled snapshots and motion clips over
@@ -72,40 +73,40 @@ export function HowItWorksModal({ open, onClose }: { open: boolean; onClose: () 
           </div>
         </section>
 
-        <section className="border-t border-slate-200 pt-4 space-y-3">
-          <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-            <Lock className="w-4 h-4 text-slate-700" />
+        <section className="border-t border-line pt-4 space-y-3">
+          <h3 className="font-display text-xl text-ink flex items-center gap-2">
+            <Lock className="w-4 h-4 text-ink-soft" />
             Theft resistance
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            <div className="p-2.5 rounded bg-slate-50 border border-slate-200">
-              <div className="font-semibold text-slate-900 mb-0.5">High pole</div>
-              <div className="text-slate-600 text-[11px]">
+            <div className="p-2.5 rounded-lg bg-paper border border-line">
+              <div className="font-semibold text-ink mb-0.5">High pole</div>
+              <div className="text-muted text-[13px]">
                 Galvanised iron pole in a concrete footing, with a loose anti-climb sleeve and security bolts.
               </div>
             </div>
-            <div className="p-2.5 rounded bg-slate-50 border border-slate-200">
-              <div className="font-semibold text-slate-900 mb-0.5">Footage leaves the site</div>
-              <div className="text-slate-600 text-[11px]">
+            <div className="p-2.5 rounded-lg bg-paper border border-line">
+              <div className="font-semibold text-ink mb-0.5">Footage leaves the site</div>
+              <div className="text-muted text-[13px]">
                 Snapshots upload as they are taken, and a heartbeat every 60 seconds means a camera that goes silent is
                 noticed quickly.
               </div>
             </div>
-            <div className="p-2.5 rounded bg-slate-50 border border-slate-200">
-              <div className="font-semibold text-slate-900 mb-0.5">Warning sign</div>
-              <div className="text-slate-600 text-[11px]">
+            <div className="p-2.5 rounded-lg bg-paper border border-line">
+              <div className="font-semibold text-ink mb-0.5">Warning sign</div>
+              <div className="text-muted text-[13px]">
                 A notice that the plot is monitored. Final wording is approved by the local advocate.
               </div>
             </div>
           </div>
         </section>
 
-        <section className="border-t border-slate-200 pt-4 space-y-2">
-          <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-slate-700" />
+        <section className="border-t border-line pt-4 space-y-2">
+          <h3 className="font-display text-xl text-ink flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-ink-soft" />
             Records you can check
           </h3>
-          <p className="text-slate-600">
+          <p className="text-muted">
             Camera incidents and dossiers are hashed (SHA-256) and signed (Ed25519) by the server when it receives
             them, and anyone can verify them with Paridhi's public key. That shows a record hasn't been altered since;
             it doesn't by itself make it admissible. In court, electronic records need a certificate under Section 63

@@ -22,8 +22,11 @@ Run `npm run dev:api` and `npm run dev:web` together for hot reload on http://lo
    advice needs an advocate's review.
 4. **Sample data stays obviously fake.** Use `example.com` emails, reserved fictional phone numbers (555-01xx in North
    America, 07700 900xxx or 020 7946 0xxx in the UK) and zeroed enrolment numbers.
-5. **Design.** Light mode, slate palette, hairline borders, no decorative gradients or glows. Colour is for status
-   only: green clear, amber attention, red action.
+5. **Design.** Use the tokens in `web/src/index.css` (warm paper surfaces, forest ink, one laterite accent) and the
+   components in `web/src/ui/` (Button, Card, Badge, Tabs, Menu, form fields) rather than raw colours. Headings use the
+   display serif (Newsreader), interface text IBM Plex Sans at 14–15 px, and mono only for IDs and hashes. Status
+   colours are for status only: green clear, ochre attention, brick action. No gradients, glows or dark backgrounds.
+   Write for owners in plain words: say what was checked, what it means, and what they can do.
 
 ## Where help is welcome
 

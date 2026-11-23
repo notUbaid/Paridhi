@@ -65,7 +65,7 @@ export function Modal({ open, onClose, title, icon, badge, footer, size = 'lg', 
 
   return createPortal(
     <div
-      className="modal-overlay fixed inset-0 z-50 bg-slate-950/60 flex items-center justify-center p-4"
+      className="modal-overlay fixed inset-0 z-50 bg-ink/45 flex items-end sm:items-center justify-center sm:p-4"
       onClick={onClose}
     >
       <div
@@ -74,13 +74,13 @@ export function Modal({ open, onClose, title, icon, badge, footer, size = 'lg', 
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`modal-panel bg-white rounded-lg border border-slate-200 shadow-2xl w-full ${SIZES[size]} max-h-[90vh] flex flex-col overflow-hidden outline-none`}
+        className={`modal-panel bg-surface rounded-t-card sm:rounded-card border border-line shadow-pop w-full ${SIZES[size]} max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden outline-none`}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between gap-3 bg-slate-50/60">
-          <div className="flex items-center gap-2 min-w-0">
-            {icon}
-            <h2 id={titleId} className="font-semibold text-slate-900 text-sm tracking-tight truncate">
+        <div className="px-5 sm:px-6 py-4 border-b border-line flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {icon && <span className="text-muted [&_svg]:text-muted shrink-0">{icon}</span>}
+            <h2 id={titleId} className="font-display text-xl leading-tight text-ink truncate">
               {title}
             </h2>
             {badge}
@@ -88,15 +88,15 @@ export function Modal({ open, onClose, title, icon, badge, footer, size = 'lg', 
           <button
             type="button"
             onClick={onClose}
-            className="no-print text-slate-400 hover:text-slate-700 p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+            className="no-print text-muted hover:text-ink p-1.5 rounded-lg hover:bg-sunken transition-colors cursor-pointer"
             aria-label="Close"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
         <div className="modal-body overflow-y-auto">{children}</div>
         {footer && (
-          <div className="no-print px-5 py-3.5 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="no-print px-5 sm:px-6 py-4 border-t border-line bg-paper/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             {footer}
           </div>
         )}

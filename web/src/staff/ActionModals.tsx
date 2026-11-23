@@ -4,7 +4,7 @@ import { CAVEAT_VALIDITY_DAYS } from '@shared/domain';
 import type { MutationEntry, PropertyRecord } from '@shared/types';
 import { errorMessage } from '../api';
 import { Modal } from '../components/Modal';
-import { FormActions, FormError, TextArea, TextField, todayIso } from './forms';
+import { FormActions, FormError, TextArea, TextField, todayIso } from '../ui/forms';
 
 interface ActionModalProps {
   property: PropertyRecord;
@@ -47,7 +47,7 @@ function ActionForm({
 
   return (
     <Modal open onClose={onClose} size="md" icon={icon} title={title}>
-      <form onSubmit={submit} className="p-5 space-y-3.5 text-xs">
+      <form onSubmit={submit} className="p-5 space-y-3.5 text-sm">
         {children}
         <FormError message={error} />
         <FormActions busy={busy} submitLabel={submitLabel} onCancel={onClose} />
@@ -61,12 +61,12 @@ export function RecordCheckModal({ property, onClose, onSaved, save }: ActionMod
   return (
     <ActionForm
       title="Record a land record check"
-      icon={<Landmark className="w-4 h-4 text-slate-700 shrink-0" />}
+      icon={<Landmark className="w-4 h-4 text-ink-soft shrink-0" />}
       submitLabel="Record check"
       onClose={onClose}
       run={async () => onSaved(await save(note.trim()))}
     >
-      <p className="text-slate-600">
+      <p className="text-muted">
         Confirm you checked <strong className="font-medium">{property.revenue.portalName}</strong> for{' '}
         {property.revenue.accountLabel} {property.revenue.accountNumber} and found no new mutation applications. If you
         found one, flag it instead.
@@ -87,12 +87,12 @@ export function FlagMutationModal({
   return (
     <ActionForm
       title="Flag a mutation application"
-      icon={<AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />}
+      icon={<AlertTriangle className="w-4 h-4 text-bad shrink-0" />}
       submitLabel="Flag application"
       onClose={onClose}
       run={async () => onSaved(await save({ reference: reference.trim(), filedOn, description: description.trim() }))}
     >
-      <p className="text-slate-600">
+      <p className="text-muted">
         Use this for an application on the land record that the owner did not start. The owner is shown
         &ldquo;Action required&rdquo; until it is resolved.
       </p>
@@ -122,12 +122,12 @@ export function ResolveFlagModal({
   return (
     <ActionForm
       title={`Resolve ${mutation.reference}`}
-      icon={<CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
+      icon={<CheckCircle2 className="w-4 h-4 text-ok shrink-0" />}
       submitLabel="Mark resolved"
       onClose={onClose}
       run={async () => onSaved(await save(outcome.trim()))}
     >
-      <p className="text-slate-600">{mutation.description}</p>
+      <p className="text-muted">{mutation.description}</p>
       <TextArea
         label="Outcome"
         required
@@ -151,12 +151,12 @@ export function ConfirmCaveatModal({
   return (
     <ActionForm
       title="Confirm a caveat was lodged"
-      icon={<Scale className="w-4 h-4 text-slate-700 shrink-0" />}
+      icon={<Scale className="w-4 h-4 text-ink-soft shrink-0" />}
       submitLabel="Confirm lodging"
       onClose={onClose}
       run={async () => onSaved(await save(court.trim(), lodgedOn))}
     >
-      <p className="text-slate-600">
+      <p className="text-muted">
         Record the caveat under Section 148A CPC after it has been lodged. It stays in force for {CAVEAT_VALIDITY_DAYS}{' '}
         days from this date, and any pending renewal request is marked done.
       </p>
