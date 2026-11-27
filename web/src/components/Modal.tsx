@@ -80,7 +80,7 @@ export function Modal({ open, onClose, title, icon, badge, footer, size = 'lg', 
         <div className="px-5 sm:px-6 py-4 border-b border-line flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
             {icon && <span className="text-muted [&_svg]:text-muted shrink-0">{icon}</span>}
-            <h2 id={titleId} className="font-display text-xl leading-tight text-ink truncate">
+            <h2 id={titleId} className="font-display text-heading text-ink truncate">
               {title}
             </h2>
             {badge}

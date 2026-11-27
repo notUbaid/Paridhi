@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { AlertTriangle, ArrowLeft, ClipboardCheck, Landmark, LogOut, Plus, RefreshCw, Scale, Search, UserCheck, Users } from 'lucide-react';
+import { AlertTriangle, ClipboardCheck, Inbox, Landmark, LogOut, Plus, RefreshCw, Scale, Search, UserCheck, Users } from 'lucide-react';
 import {
   getCaveatStatus,
   getPropertyAlerts,
   getPropertyStatus,
   type PropertyStatus
 } from '@shared/domain';
-import type { HealthResponse, MutationEntry, PropertyRecord, StaffMember, StaffProperty, StaffRole, Viewer } from '@shared/types';
+import type { MutationEntry, PropertyRecord, StaffMember, StaffProperty, StaffRole, Viewer } from '@shared/types';
 import { api, errorMessage } from '../api';
 import { Badge, StatusBadge } from '../ui/Badge';
 import { StatusScreen } from '../components/StatusScreen';
@@ -15,6 +15,7 @@ import type { Account } from '../session';
 import { formatDate, formatDateTime, formatRelative } from '../format';
 import { ConfirmCaveatModal, FlagMutationModal, RecordCheckModal, ResolveFlagModal } from './ActionModals';
 import { AddPlotModal } from './AddPlotModal';
+import { PlotRequestsModal } from './PlotRequestsModal';
 import { RecordVisitModal } from './RecordVisitModal';
 import { TeamModal } from './TeamModal';
 import { Button, buttonClass } from '../ui/Button';
@@ -28,6 +29,7 @@ const STATUS_ORDER: Record<PropertyStatus, number> = { ACTION_REQUIRED: 0, ATTEN
 type ModalState =
   | { kind: 'add' }
   | { kind: 'team' }
+  | { kind: 'requests' }
   | { kind: 'visit' }
   | { kind: 'check' }
   | { kind: 'flag' }
@@ -58,14 +60,12 @@ function permissionsFor(role: StaffRole): Permissions {
 }
 
 interface StaffConsoleProps {
-  health: HealthResponse;
   viewer: Viewer;
-  account: Account | null;
-  onOpenOwnerView: () => void;
+  account: Account;
 }
 
-export default function StaffConsole({ health, viewer, account, onOpenOwnerView }: StaffConsoleProps) {
-  const role: StaffRole = viewer.demo ? 'ops' : viewer.staffRole!;
+export default function StaffConsole({ viewer, account }: StaffConsoleProps) {
+  const role: StaffRole = viewer.staffRole!;
   const can = permissionsFor(role);
   const [data, setData] = useState<{ properties: StaffProperty[]; staff: StaffMember[] } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -143,16 +143,18 @@ export default function StaffConsole({ health, viewer, account, onOpenOwnerView 
           <span className="text-sm font-medium text-ink whitespace-nowrap">
             Staff<span className="hidden sm:inline"> console</span>
           </span>
-          <Badge>{viewer.demo ? 'Ops (demo)' : ROLE_LABEL[role]}</Badge>
+          <Badge>{ROLE_LABEL[role]}</Badge>
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
             {can.team && (
-              <Button variant="ghost" size="sm" onClick={() => setModal({ kind: 'team' })} icon={<Users className="w-4 h-4" />} aria-label="Team">
+              <Button variant="ghost" size="sm" onClick={() => setModal({ kind: 'requests' })} icon={<Inbox className="w-4 h-4" />} title="Plot requests">
+                <span className="hidden sm:inline">Requests</span>
+              </Button>
+            )}
+            {can.team && (
+              <Button variant="ghost" size="sm" onClick={() => setModal({ kind: 'team' })} icon={<Users className="w-4 h-4" />} title="Team">
                 <span className="hidden sm:inline">Team</span>
               </Button>
             )}
-            <Button variant="ghost" size="sm" onClick={onOpenOwnerView} icon={<ArrowLeft className="w-4 h-4" />} aria-label="Owner view">
-              <span className="hidden sm:inline">Owner view</span>
-            </Button>
             {account && (
               <Menu
                 triggerLabel="Account"
@@ -181,20 +183,11 @@ export default function StaffConsole({ health, viewer, account, onOpenOwnerView 
         </div>
       </header>
 
-      {health.demoMode && (
-        <div className="bg-warn-soft border-b border-warn-line px-4 sm:px-6 py-2 text-sm text-warn">
-          <div className="max-w-7xl mx-auto">
-            <strong className="font-semibold">Demo.</strong> You are acting as ops staff on sample plots. Changes are kept
-            in memory and reset when the server restarts.
-          </div>
-        </div>
-      )}
-
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 items-start">
         <aside className="bg-surface rounded-card border border-line shadow-card overflow-hidden lg:sticky lg:top-20">
           <div className="p-4 border-b border-line space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="font-display text-xl text-ink">
+              <h2 className="font-display text-heading text-ink">
                 Plots <span className="text-faint">{data.properties.length}</span>
               </h2>
               {can.addPlot && (
@@ -243,7 +236,7 @@ export default function StaffConsole({ health, viewer, account, onOpenOwnerView 
                       <span className="font-medium text-ink truncate">{sp.property.name}</span>
                       <StatusBadge status={status} />
                     </div>
-                    <div className="text-[13px] text-muted truncate">
+                    <div className="text-small text-muted truncate">
                       {sp.property.surveyNumber} · {sp.property.location.village}, {sp.property.location.state}
                     </div>
                     <div className="text-xs text-faint truncate">
@@ -286,11 +279,11 @@ export default function StaffConsole({ health, viewer, account, onOpenOwnerView 
         />
       )}
       {modal?.kind === 'team' && <TeamModal viewer={viewer} onClose={() => setModal(null)} onChanged={() => void load()} />}
+      {modal?.kind === 'requests' && <PlotRequestsModal onClose={() => setModal(null)} />}
       {selected && modal?.kind === 'visit' && (
         <RecordVisitModal
           property={selected.property}
           open
-          demo={viewer.demo}
           onClose={() => setModal(null)}
           onSaved={(property) => {
             replace(property);
@@ -396,7 +389,7 @@ function PlotPanel({ sp, staff, can, now, onOpen, onAssigned }: PlotPanelProps) 
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="eyebrow">{property.location.village}, {property.location.state}</div>
-            <h2 className="font-display text-3xl leading-tight text-ink mt-1">{property.name}</h2>
+            <h2 className="font-display text-title leading-tight text-ink mt-1">{property.name}</h2>
             <div className="text-sm text-muted">
               {property.surveyNumber} · {property.location.village}, {property.location.mandalTaluk}, {property.location.district},{' '}
               {property.location.state} · {property.areaAcres.toFixed(3)} acres
@@ -477,12 +470,12 @@ function PlotPanel({ sp, staff, can, now, onOpen, onAssigned }: PlotPanelProps) 
               <div className="font-semibold">
                 {mutation.reference} · filed {formatDate(mutation.filedOn)}
               </div>
-              <div className="text-[13px]">{mutation.description}</div>
+              <div className="text-small">{mutation.description}</div>
               {can.resolve && (
                 <button
                   type="button"
                   onClick={() => onOpen({ kind: 'resolve', mutation })}
-                  className="text-[13px] underline cursor-pointer"
+                  className="text-small underline cursor-pointer"
                 >
                   Record the outcome
                 </button>
@@ -530,7 +523,7 @@ function PlotPanel({ sp, staff, can, now, onOpen, onAssigned }: PlotPanelProps) 
               <li key={event.id} className="flex items-start justify-between gap-3">
                 <div>
                   <div className="font-medium text-ink">{event.title}</div>
-                  <div className="text-[13px] text-muted">{event.description}</div>
+                  <div className="text-small text-muted">{event.description}</div>
                 </div>
                 <time dateTime={event.at} title={formatDateTime(event.at)} className="text-xs font-mono text-faint shrink-0">
                   {formatRelative(event.at, now)}

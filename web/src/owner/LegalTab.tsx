@@ -42,7 +42,7 @@ export function LegalTab({ property, now, requesting, onRequestRenewal, onOpenDr
             <div className="space-y-5">
               <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
-                  <div className="font-display text-4xl text-ink leading-none">
+                  <div className="font-display text-display text-ink leading-none">
                     {caveat.state === 'EXPIRED' ? 'Lapsed' : `${caveat.daysRemaining} days`}
                   </div>
                   <div className="text-sm text-muted mt-1.5">{caveat.state === 'EXPIRED' ? `on ${formatDate(caveat.expiresOn)}` : 'of cover left'}</div>

@@ -1,6 +1,9 @@
+import crypto from 'node:crypto';
 import type {
   ActivityEvent,
   EvidenceRecord,
+  PlotRequest,
+  PlotRequestInput,
   PropertyRecord,
   StaffMember,
   StaffProperty,
@@ -48,6 +51,12 @@ export interface UpdateContext {
 
 export class UnknownUserError extends Error {}
 
+/** A plot request as it is saved: from the public website (no account) or a signed-in owner. */
+export interface NewPlotRequest extends PlotRequestInput {
+  source: PlotRequest['source'];
+  userId: string | null;
+}
+
 export interface Store {
   readonly kind: 'memory' | 'postgres';
   listProperties(scope: Scope): Promise<PropertyRecord[]>;
@@ -78,9 +87,18 @@ export interface Store {
   addPhoto(photo: StoredPhoto, data: Buffer): Promise<void>;
   getPhoto(propertyId: string, photoId: string): Promise<{ meta: StoredPhoto; data: Buffer } | undefined>;
 
+  addPlotRequest(request: NewPlotRequest): Promise<PlotRequest>;
+  /** Every request, newest first (ops). */
+  listPlotRequests(): Promise<PlotRequest[]>;
+  /** The requests a signed-in owner has made, newest first. */
+  listPlotRequestsForUser(userId: string): Promise<PlotRequest[]>;
+
   /** Demo only: restore a property from sample data. */
   reset?(id: string): Promise<PropertyRecord | undefined>;
 }
+
+/** The owner of every sample plot in the demo. */
+export const DEMO_OWNER_ID = 'demo-owner';
 
 /* ---------------------------------------------------------------------------------------- */
 
@@ -91,13 +109,15 @@ interface MemorySeed {
 }
 
 /**
- * Demo storage: sample data in memory. It resets on restart and is not shared between
- * serverless instances. There are no real accounts.
+ * Storage in memory, for the public demo and for tests. It resets on restart and is not shared
+ * between serverless instances. Seeded plots belong to DEMO_OWNER_ID.
  */
 export class MemoryStore implements Store {
   readonly kind = 'memory';
   private properties = new Map<string, PropertyRecord>();
+  private owners = new Map<string, string>();
   private assignments = new Map<string, Assignments>();
+  private plotRequests: (PlotRequest & { userId: string | null })[] = [];
   private evidence = new Map<string, EvidenceRecord[]>();
   private photos = new Map<string, { meta: StoredPhoto; data: Buffer }>();
   private staff: StaffMember[];
@@ -108,6 +128,7 @@ export class MemoryStore implements Store {
     this.staff = [...seed.staff];
     for (const property of seed.properties()) {
       this.properties.set(property.id, property);
+      this.owners.set(property.id, DEMO_OWNER_ID);
       this.assignments.set(property.id, seed.assignments[property.id] ?? { inspectorUserId: null, advocateUserId: null });
     }
   }
@@ -116,13 +137,14 @@ export class MemoryStore implements Store {
     if (!this.properties.has(id)) return false;
     const assigned = this.assignments.get(id);
     switch (scope.kind) {
+      case 'all':
+        return true;
+      case 'owner':
+        return this.owners.get(id) === scope.userId;
       case 'inspector':
         return assigned?.inspectorUserId === scope.userId;
       case 'advocate':
         return assigned?.advocateUserId === scope.userId;
-      default:
-        // The demo has no owner accounts, so an owner sees every sample plot.
-        return true;
     }
   }
 
@@ -185,15 +207,16 @@ export class MemoryStore implements Store {
     }));
   }
 
-  async createProperty(_ownerUserId: string, property: PropertyRecord, assignments: Assignments): Promise<void> {
+  async createProperty(ownerUserId: string, property: PropertyRecord, assignments: Assignments): Promise<void> {
     if (this.properties.has(property.id)) throw new Error(`Property ${property.id} already exists`);
     this.properties.set(property.id, property);
+    this.owners.set(property.id, ownerUserId);
     this.assignments.set(property.id, assignments);
   }
 
   async findUserIdByEmail(email: string): Promise<string | undefined> {
-    // The demo has no accounts; any email stands for a sample owner.
-    return `demo-owner:${email.toLowerCase()}`;
+    // There are no accounts in memory; any email stands for an owner.
+    return `owner:${email.toLowerCase()}`;
   }
 
   async getStaffMember(userId: string): Promise<StaffMember | undefined> {
@@ -219,6 +242,21 @@ export class MemoryStore implements Store {
   async getPhoto(propertyId: string, photoId: string) {
     const photo = this.photos.get(photoId);
     return photo && photo.meta.propertyId === propertyId ? photo : undefined;
+  }
+
+  async addPlotRequest(request: NewPlotRequest): Promise<PlotRequest> {
+    const { userId, ...input } = request;
+    const saved: PlotRequest = { ...input, id: crypto.randomUUID(), createdAt: new Date().toISOString(), status: 'new' };
+    this.plotRequests.unshift({ ...saved, userId });
+    return saved;
+  }
+
+  async listPlotRequests(): Promise<PlotRequest[]> {
+    return this.plotRequests.map(({ userId: _userId, ...request }) => request);
+  }
+
+  async listPlotRequestsForUser(userId: string): Promise<PlotRequest[]> {
+    return this.plotRequests.filter((r) => r.userId === userId).map(({ userId: _userId, ...request }) => request);
   }
 
   async reset(id: string): Promise<PropertyRecord | undefined> {
@@ -335,6 +373,40 @@ const toPhoto = (row: PhotoRow): StoredPhoto => ({
 
 const ACTIVITY_INSERT = `insert into public.activity_events (id, property_id, at, category, severity, title, description)
   values ($1, $2, $3, $4, $5, $6, $7)`;
+
+interface PlotRequestRow {
+  id: string;
+  created_at: Date | string;
+  source: PlotRequest['source'];
+  status: PlotRequest['status'];
+  name: string;
+  email: string;
+  phone: string | null;
+  country: string | null;
+  state: string;
+  district: string;
+  village: string | null;
+  survey_number: string | null;
+  notes: string | null;
+}
+
+const PLOT_REQUEST_COLUMNS = `id, created_at, source, status, name, email, phone, country, state, district, village, survey_number, notes`;
+
+const toPlotRequest = (row: PlotRequestRow): PlotRequest => ({
+  id: row.id,
+  createdAt: iso(row.created_at),
+  source: row.source,
+  status: row.status,
+  name: row.name,
+  email: row.email,
+  phone: row.phone,
+  country: row.country,
+  state: row.state,
+  district: row.district,
+  village: row.village,
+  surveyNumber: row.survey_number,
+  notes: row.notes
+});
 
 const PHOTO_COLUMNS = `id, property_id, visit_id, peg_id, content_type, size_bytes, sha256, captured_at, lat, lng, uploaded_by, uploaded_at`;
 
@@ -570,6 +642,44 @@ export class PostgresStore implements Store {
     );
     if (rows.length === 0 || !rows[0].bytes) return undefined;
     return { meta: toPhoto(rows[0]), data: Buffer.from(rows[0].bytes) };
+  }
+
+  async addPlotRequest(request: NewPlotRequest): Promise<PlotRequest> {
+    const { rows } = await this.db.query<PlotRequestRow>(
+      `insert into public.plot_requests
+         (source, user_id, name, email, phone, country, state, district, village, survey_number, notes)
+       values ($1, $2::uuid, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       returning ${PLOT_REQUEST_COLUMNS}`,
+      [
+        request.source,
+        request.userId,
+        request.name,
+        request.email,
+        request.phone,
+        request.country,
+        request.state,
+        request.district,
+        request.village,
+        request.surveyNumber,
+        request.notes
+      ]
+    );
+    return toPlotRequest(rows[0]);
+  }
+
+  async listPlotRequests(): Promise<PlotRequest[]> {
+    const { rows } = await this.db.query<PlotRequestRow>(
+      `select ${PLOT_REQUEST_COLUMNS} from public.plot_requests order by created_at desc, id limit 500`
+    );
+    return rows.map(toPlotRequest);
+  }
+
+  async listPlotRequestsForUser(userId: string): Promise<PlotRequest[]> {
+    const { rows } = await this.db.query<PlotRequestRow>(
+      `select ${PLOT_REQUEST_COLUMNS} from public.plot_requests where user_id = $1::uuid order by created_at desc, id`,
+      [userId]
+    );
+    return rows.map(toPlotRequest);
   }
 
   private async loadActivity(q: Queryable, propertyIds: string[]): Promise<Map<string, ActivityEvent[]>> {

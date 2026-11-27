@@ -207,12 +207,49 @@ export interface Dossier extends SignedRecord {
 /** How the web app should sign owners in. The publishable key is public by design. */
 export type AuthInfo = { required: false } | { required: true; supabaseUrl: string; publishableKey: string };
 
+/** Where people can reach Paridhi. Each is null until it is configured on the server. */
+export interface ContactInfo {
+  /** WhatsApp number in international format without the plus sign, e.g. "919800000000". */
+  whatsapp: string | null;
+  email: string | null;
+}
+
 export interface HealthResponse {
   status: 'ok';
-  demoMode: boolean;
+  /** The sample plots at /demo are available. */
+  demo: boolean;
+  /** Customer accounts are set up (a database and sign-in). */
+  accounts: boolean;
   deviceIngestEnabled: boolean;
   signingKey: { keyId: string; ephemeral: boolean };
   auth: AuthInfo;
+  contact: ContactInfo;
+}
+
+/* ---------- Plot requests ---------- */
+
+/** What someone tells us about a plot they want protected, from the website or their account. */
+export interface PlotRequestInput {
+  name: string;
+  email: string;
+  phone: string | null;
+  /** Where the owner lives. */
+  country: string | null;
+  state: string;
+  district: string;
+  village: string | null;
+  surveyNumber: string | null;
+  notes: string | null;
+}
+
+export type PlotRequestStatus = 'new' | 'contacted' | 'closed';
+
+export interface PlotRequest extends PlotRequestInput {
+  id: string;
+  createdAt: string;
+  /** "website" for the public form, "account" when a signed-in owner adds a plot. */
+  source: 'website' | 'account';
+  status: PlotRequestStatus;
 }
 
 /* ---------- Staff ---------- */
@@ -228,7 +265,7 @@ export interface StaffMember {
   staffCode: string;
 }
 
-/** Who is using the app. In the open demo the viewer acts as ops. */
+/** Who is using the app. The demo viewer has no account and no staff role. */
 export interface Viewer {
   demo: boolean;
   userId: string | null;

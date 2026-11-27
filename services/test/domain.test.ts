@@ -6,7 +6,8 @@ import {
   distanceMeters,
   formatQuadrantBearing,
   getCaveatStatus,
-  isPhotoWithinGeofence
+  isPhotoWithinGeofence,
+  istDaysBetween
 } from '../../shared/domain.js';
 import type { LegalRetainer } from '../../shared/types.js';
 import { createSeedProperties } from '../src/seed.js';
@@ -34,6 +35,23 @@ describe('Section 148A caveat validity', () => {
     assert.equal(getCaveatStatus(legal(79), FIXED_NOW).daysRemaining, 11);
     assert.equal(getCaveatStatus(legal(90), FIXED_NOW).state, 'EXPIRED');
     assert.equal(getCaveatStatus(legal(null), FIXED_NOW).state, 'NONE');
+  });
+
+  test('the countdown counts Indian calendar days, so it holds all day and changes at midnight IST', () => {
+    // Lodged 10:30 IST on 1 Oct; lapses on 30 Dec (IST). The count is the same at any time of day.
+    const caveat: LegalRetainer = { ...legal(null), caveat: { court: 'Test court', lodgedOn: '2026-10-01T05:00:00.000Z' } };
+    const at = (iso: string) => getCaveatStatus(caveat, new Date(iso)).daysRemaining;
+    assert.equal(at('2026-11-23T18:31:00.000Z'), 36); // 00:01 IST, 24 Nov
+    assert.equal(at('2026-11-24T04:59:00.000Z'), 36); // 10:29 IST, before the lodging time of day
+    assert.equal(at('2026-11-24T05:01:00.000Z'), 36); // 10:31 IST, after it
+    assert.equal(at('2026-11-24T18:29:00.000Z'), 36); // 23:59 IST
+    assert.equal(at('2026-11-24T18:31:00.000Z'), 35); // 00:01 IST, 25 Nov
+  });
+
+  test('calendar days are counted in IST, not the server or viewer time zone', () => {
+    // 23:00 UTC on 23 Nov is already 24 Nov in India.
+    assert.equal(istDaysBetween('2026-11-23T10:00:00.000Z', '2026-11-23T23:00:00.000Z'), 1);
+    assert.equal(istDaysBetween('2026-11-23T10:00:00.000Z', '2026-11-23T18:00:00.000Z'), 0);
   });
 
   test('only counts a renewal request made after the current caveat was lodged', () => {

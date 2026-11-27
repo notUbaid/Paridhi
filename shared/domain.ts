@@ -23,6 +23,22 @@ export function addDays(iso: string, days: number): string {
   return new Date(new Date(iso).getTime() + days * DAY_MS).toISOString();
 }
 
+/** India Standard Time is UTC+5:30 all year (no daylight saving). */
+const IST_OFFSET_MS = 330 * 60_000;
+
+/** The calendar day in India that an instant falls on, as a day count (days since 1 Jan 1970, IST). */
+export function istDayNumber(at: Date | string): number {
+  return Math.floor((new Date(at).getTime() + IST_OFFSET_MS) / DAY_MS);
+}
+
+/**
+ * Calendar days in India from `from` to `to`. Counting dates rather than 24-hour periods keeps a
+ * countdown the same all day and makes it change at midnight IST, wherever the viewer is.
+ */
+export function istDaysBetween(from: Date | string, to: Date | string): number {
+  return istDayNumber(to) - istDayNumber(from);
+}
+
 export type CaveatState = 'NONE' | 'ACTIVE' | 'EXPIRING' | 'EXPIRED';
 
 export interface CaveatStatus {
@@ -37,8 +53,9 @@ export function getCaveatStatus(legal: LegalRetainer, now: Date): CaveatStatus {
   if (!legal.caveat) {
     return { state: 'NONE', expiresOn: null, daysRemaining: null, renewalRequested: false };
   }
+  // Ninety days from the date it was lodged, counted in Indian calendar days.
   const expiresOn = addDays(legal.caveat.lodgedOn, CAVEAT_VALIDITY_DAYS);
-  const daysRemaining = Math.ceil((new Date(expiresOn).getTime() - now.getTime()) / DAY_MS);
+  const daysRemaining = istDaysBetween(now, expiresOn);
   const renewalRequested =
     legal.renewalRequestedAt !== null &&
     new Date(legal.renewalRequestedAt).getTime() > new Date(legal.caveat.lodgedOn).getTime();
@@ -128,7 +145,7 @@ export function getPropertyAlerts(property: PropertyRecord, now: Date): Property
   if (visit?.debrisFound) {
     alerts.push({ level: 'ATTENTION', area: 'INSPECTION', message: 'Inspector found debris or dumped material' });
   }
-  const overdueDays = Math.floor((now.getTime() - new Date(inspection.nextVisitDue).getTime()) / DAY_MS);
+  const overdueDays = istDaysBetween(inspection.nextVisitDue, now);
   if (overdueDays >= INSPECTION_OVERDUE_GRACE_DAYS) {
     alerts.push({
       level: 'ATTENTION',
@@ -136,9 +153,7 @@ export function getPropertyAlerts(property: PropertyRecord, now: Date): Property
       message: visit ? `Monthly inspection is ${overdueDays} days overdue` : 'First inspection visit is overdue'
     });
   }
-  const checkAgeDays = revenue.lastCheckedAt
-    ? Math.floor((now.getTime() - new Date(revenue.lastCheckedAt).getTime()) / DAY_MS)
-    : null;
+  const checkAgeDays = revenue.lastCheckedAt ? istDaysBetween(revenue.lastCheckedAt, now) : null;
   if (checkAgeDays === null || checkAgeDays >= REGISTRY_CHECK_STALE_DAYS) {
     alerts.push({
       level: 'ATTENTION',

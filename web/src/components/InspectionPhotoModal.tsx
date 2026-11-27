@@ -43,7 +43,7 @@ export function InspectionPhotoModal({ photo, property, inspectorName, onClose }
             <MapPin className="w-3.5 h-3.5 text-muted shrink-0" />
             {photo.position.lat.toFixed(6)}°N, {photo.position.lng.toFixed(6)}°E
           </div>
-          <div className={`text-[13px] font-medium mt-0.5 ${inside ? 'text-ok' : 'text-bad'}`}>
+          <div className={`text-small font-medium mt-0.5 ${inside ? 'text-ok' : 'text-bad'}`}>
             {distance === null
               ? 'Peg not found in the survey'
               : `${formatMeters(distance)} from peg ${photo.pegId} (${inside ? 'within' : 'outside'} ${PHOTO_GEOFENCE_METERS} m)`}
@@ -56,7 +56,7 @@ export function InspectionPhotoModal({ photo, property, inspectorName, onClose }
             <Clock className="w-3.5 h-3.5 text-muted shrink-0" />
             {formatDateTime(photo.capturedAt)}
           </div>
-          <div className="text-[13px] text-muted mt-0.5 font-mono break-all">
+          <div className="text-small text-muted mt-0.5 font-mono break-all">
             {photo.sha256 ? `SHA-256 ${photo.sha256.slice(0, 16)}…` : "From the phone's clock at capture"}
           </div>
         </div>
@@ -67,7 +67,7 @@ export function InspectionPhotoModal({ photo, property, inspectorName, onClose }
             <UserCheck className="w-3.5 h-3.5 text-muted shrink-0" />
             {inspectorName}
           </div>
-          <div className="text-[13px] text-muted mt-0.5">Phone GPS can be spoofed; the visit log is the primary record</div>
+          <div className="text-small text-muted mt-0.5">Phone GPS can be spoofed; the visit log is the primary record</div>
         </div>
       </div>
     </Modal>

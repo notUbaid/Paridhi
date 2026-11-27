@@ -83,9 +83,10 @@ describe('Postgres storage with owner sign-in', () => {
 
   const as = async (owner: string) => ({ Authorization: `Bearer ${await tokenFor(owner)}` });
 
-  test('health tells the web app to show sign-in', async () => {
+  test('health tells the web app that accounts are on and how to sign in', async () => {
     const { body } = await server.get('/api/health');
-    assert.equal(body.demoMode, false);
+    assert.equal(body.accounts, true);
+    assert.equal(body.demo, true);
     assert.deepEqual(body.auth, {
       required: true,
       supabaseUrl: 'https://paridhi-test.supabase.co',
@@ -179,9 +180,80 @@ describe('Postgres storage with owner sign-in', () => {
     assert.equal(status, 404);
   });
 
-  test('demo routes do not exist when using the database', async () => {
-    const { status } = await server.post('/api/demo/properties/prop-shamshabad-412-a/reset', {}, await as(OWNER_A));
-    assert.equal(status, 404);
+  test('the demo only ever touches the sample plots, never the database', async () => {
+    const customerPlot = await server.post('/api/demo/properties/prop-shamshabad-412-a/simulate-alert', {}, await as(OWNER_A));
+    assert.equal(customerPlot.status, 404);
+
+    const sample = await server.post('/api/demo/properties/prop-shamshabad-412/simulate-alert');
+    assert.equal(sample.status, 200);
+    const { rows } = await db.query<{ count: number }>(`select count(*)::int as count from public.properties`);
+    assert.equal(rows[0].count, 4);
+    const stored = (await store.getProperty('prop-shamshabad-412-a', { kind: 'owner', userId: OWNER_A }))!;
+    assert.equal(stored.camera?.changeDetected, false);
+  });
+
+  test('owners add a plot request to their account and see only their own', async () => {
+    const request = {
+      name: 'Owner A',
+      email: 'ignored@example.com',
+      state: 'Karnataka',
+      district: 'Bengaluru Rural',
+      village: 'Shettigere',
+      surveyNumber: '88/2C'
+    };
+    const created = await server.post('/api/me/plot-requests', request, await as(OWNER_A));
+    assert.equal(created.status, 201);
+    assert.equal(created.body.request.source, 'account');
+    assert.equal(created.body.request.status, 'new');
+    // The account's own email is used, not whatever was typed.
+    assert.equal(created.body.request.email, `${OWNER_A.slice(0, 4)}@example.com`);
+
+    const mine = await server.get('/api/me/plot-requests', await as(OWNER_A));
+    assert.equal(mine.body.requests.length, 1);
+    const theirs = await server.get('/api/me/plot-requests', await as(OWNER_B));
+    assert.equal(theirs.body.requests.length, 0);
+    assert.equal((await server.get('/api/me/plot-requests')).status, 401);
+  });
+
+  test('website plot requests are saved to the database without an account', async () => {
+    const { status } = await server.post('/api/plot-requests', {
+      name: 'Visitor',
+      email: 'visitor@example.com',
+      state: 'Punjab',
+      district: 'SAS Nagar'
+    });
+    assert.equal(status, 201);
+    const { rows } = await db.query<{ source: string; user_id: string | null }>(
+      `select source, user_id from public.plot_requests where email = 'visitor@example.com'`
+    );
+    assert.deepEqual(rows, [{ source: 'website', user_id: null }]);
+  });
+
+  test('the public anon role can add a website request but never read or claim one', async () => {
+    await pglite.exec(`
+      set role anon;
+      insert into public.plot_requests (name, email, state, district) values ('Anon', 'anon@example.com', 'Telangana', 'Medchal');
+      reset role;
+    `);
+    await assert.rejects(pglite.exec(`set role anon; select * from public.plot_requests;`), /permission denied/);
+    await pglite.exec('reset role');
+    await assert.rejects(
+      pglite.exec(`set role anon; insert into public.plot_requests (name, email, state, district, user_id)
+        values ('Anon', 'anon2@example.com', 'Telangana', 'Medchal', '${OWNER_A}');`),
+      /permission denied/
+    );
+    await pglite.exec('reset role');
+    await assert.rejects(
+      pglite.exec(`set role anon; update public.plot_requests set status = 'closed';`),
+      /permission denied/
+    );
+    await pglite.exec('reset role');
+    await assert.rejects(
+      pglite.exec(`set role authenticated; insert into public.plot_requests (name, email, state, district)
+        values ('Auth', 'auth@example.com', 'Telangana', 'Medchal');`),
+      /permission denied/
+    );
+    await pglite.exec('reset role');
   });
 
   test('the activity log returns the 50 most recent events, newest first', async () => {

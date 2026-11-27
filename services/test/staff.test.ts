@@ -94,8 +94,19 @@ describe('Staff console with roles', () => {
     assert.equal((await server.get('/api/me', await as('ownerA'))).body.viewer.staffRole, null);
   });
 
-  test('owners cannot use the staff console', async () => {
-    assert.equal((await server.get('/api/staff/properties', await as('ownerA'))).status, 403);
+  test('the staff console is hidden: 404 for owners, signed-out visitors and bad tokens', async () => {
+    assert.equal((await server.get('/api/staff/properties', await as('ownerA'))).status, 404);
+    assert.equal((await server.get('/api/staff/properties')).status, 404);
+    assert.equal((await server.get('/api/staff/properties', { Authorization: 'Bearer not-a-jwt' })).status, 404);
+    assert.equal((await server.post('/api/staff/team', { email: 'x@example.com', role: 'ops', displayName: 'X' }, await as('ownerA'))).status, 404);
+  });
+
+  test('ops see every plot request; other staff cannot', async () => {
+    await server.post('/api/plot-requests', { name: 'Lead', email: 'lead@example.com', state: 'Telangana', district: 'Ranga Reddy' });
+    const ops = await server.get('/api/staff/plot-requests', await as('ops'));
+    assert.equal(ops.status, 200);
+    assert.ok(ops.body.requests.some((r: { email: string }) => r.email === 'lead@example.com'));
+    assert.equal((await server.get('/api/staff/plot-requests', await as('inspector'))).status, 403);
   });
 
   test('ops see every plot; inspectors and advocates only see plots assigned to them', async () => {
@@ -339,48 +350,5 @@ describe('Staff console with roles', () => {
     assert.ok(rows[0].kept >= 1);
     const plot = (await staffPlots('ops')).find((p) => p.property.id === PLOT)!;
     assert.equal(plot.inspectorUserId, null);
-  });
-});
-
-describe('Staff console in the demo', () => {
-  let server: TestServer;
-  before(async () => {
-    server = await startServer();
-  });
-  after(() => server.close());
-
-  test('the demo viewer can use the staff console as ops', async () => {
-    assert.equal((await server.get('/api/me')).body.viewer.staffRole, 'ops');
-    const { body } = await server.get('/api/staff/properties');
-    assert.equal(body.properties.length, 3);
-    assert.ok(body.staff.length >= 3);
-  });
-
-  test('a demo visit with a photo can be viewed from the owner side', async () => {
-    const jpeg = fakeJpeg('demo');
-    const upload = await server.postRaw(
-      '/api/staff/properties/prop-mohali-122/photos?pegId=P4&lat=30.6427&lng=76.7863',
-      jpeg,
-      'image/jpeg'
-    );
-    assert.equal(upload.status, 201);
-    const visit = await server.post('/api/staff/properties/prop-mohali-122/inspection-visits', {
-      boundaryPegsIntact: true,
-      debrisFound: true,
-      neighborInquiryConducted: false,
-      notes: 'Construction debris along the south edge',
-      photoIds: [upload.body.photo.photoId]
-    });
-    assert.equal(visit.status, 201);
-    assert.equal(visit.body.property.inspection.latestVisit.inspectorName, 'Gurinder Singh');
-    assert.equal(statusOf(visit.body.property), 'ATTENTION_NEEDED');
-
-    const photo = await server.fetchRaw(`/api/properties/prop-mohali-122/photos/${upload.body.photo.photoId}`);
-    assert.deepEqual(Buffer.from(await photo.arrayBuffer()), jpeg);
-  });
-
-  test('team changes are not available in the demo', async () => {
-    const { status } = await server.post('/api/staff/team', { email: 'a@example.com', role: 'ops', displayName: 'A' });
-    assert.equal(status, 409);
   });
 });

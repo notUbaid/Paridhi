@@ -5,9 +5,18 @@
 Paridhi combines a solar 4G camera on the plot, a monthly visit by a local field inspector, regular checks of the state
 land record, and a retained local advocate. The owner sees all of it in one dashboard.
 
-> **Status: early product.** The dashboard, API, Postgres storage, owner sign-in, signed evidence records and tests
-> are real code. Camera, land records and court work is still simulated, and without a database the app runs as an
-> open demo on sample data. See [what is real and what is simulated](#what-is-real-and-what-is-simulated).
+> **Status: early product.** The website, dashboard, API, Postgres storage, owner sign-in, signed evidence records and
+> tests are real code. Camera, land records and court work is still simulated. See
+> [what is real and what is simulated](#what-is-real-and-what-is-simulated).
+
+The site has four parts:
+
+| Path | What it is |
+| :--- | :--- |
+| `/` | The public website: what Paridhi does, pricing, questions, and a "book a free plot check" form. |
+| `/demo` | The dashboard on three sample plots, open to everyone. Changes are kept in memory. |
+| `/app` | Owner accounts: sign in or sign up, see your plots, add a plot. Needs a database. |
+| `/staff` | The staff console. Linked from nowhere, and shows "Page not found" to anyone who is not signed in as staff. |
 
 ![Dashboard overview](assets/screenshots/dashboard-overview.png)
 
@@ -36,8 +45,9 @@ Proposed pricing is ₹4,999 a month per plot. The unit economics and what they 
 | :--- | :--- |
 | Dashboard | Real. Every status, badge and checklist is computed from the data; nothing is hard-coded as "clear". |
 | API | Real Express API with input validation, JSON errors and tests. |
-| Data | Real when `DATABASE_URL` is set: Postgres (Supabase), with every query scoped to the signed-in owner and evidence stored append-only. Without it, an open demo on three sample plots held in memory. |
-| Sign-in | Real when a database is set: Supabase Auth with email and password or an emailed sign-in link. Paridhi creates owner accounts; there is no public sign-up. |
+| Data | Real when `DATABASE_URL` is set: Postgres (Supabase), with every query scoped to the signed-in owner and evidence stored append-only. The demo at `/demo` always uses three sample plots held in memory, separate from the database. |
+| Sign-in | Real when a database is set: Supabase Auth with email and password, an emailed sign-in link, or Google once it is switched on in Supabase. Owners can create an account and then add their plot; staff set up monitoring after a survey. |
+| Plot requests | Real. The website form and an owner's "Add a plot" save a request to the `plot_requests` table. Without `DATABASE_URL`, website requests are still saved through the Supabase Data API, which may only add requests, never read them. Ops see them under **Requests** in the staff console. |
 | Staff console | Real. Ops staff add plots and assign people; inspectors record visits with geotagged photos; ops record land record checks and flag applications; advocates confirm caveat lodgings and resolve flags. See [Staff console](#staff-console). |
 | Land record checks | Recorded by staff after checking the portal by hand; there is no portal integration. In the demo, "Check now" on the owner view simulates one. Checks never clear an existing flag. |
 | Camera | **Simulated.** `services/device-simulator/device_simulator.py` plays the part of a camera. New plots start without a camera and are protected by inspections alone. |
@@ -56,7 +66,7 @@ npm run build     # build the web app into web/dist
 npm start         # API and web app on http://localhost:4000
 ```
 
-With no `.env`, this is the open demo. For development with hot reload, run these in two terminals and open
+With no `.env`, the website and the demo work, and plot requests are only logged. For development with hot reload, run these in two terminals and open
 http://localhost:3000:
 
 ```bash
@@ -94,8 +104,11 @@ Copy `.env.example` to `.env` (gitignored) or set these in your hosting provider
 
 | Variable | Purpose |
 | :--- | :--- |
-| `DATABASE_URL` | Postgres connection string. Set it to store data in the database and require owner sign-in. Leave it out for the open demo. |
-| `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` | Supabase project URL and publishable key, used for sign-in. Required with `DATABASE_URL`. Both are public values. |
+| `DATABASE_URL` | Postgres connection string. Set it to turn on owner accounts and the staff console. Without it, only the website and the demo run. |
+| `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` | Supabase project URL and publishable key, used for sign-in and, without a database, to save website plot requests. Required with `DATABASE_URL`. Both are public values. |
+| `PARIDHI_CONTACT_WHATSAPP` | Optional WhatsApp number with its country code. Shows a "Message us on WhatsApp" button on the website. |
+| `PARIDHI_CONTACT_EMAIL` | Optional contact email shown on the website. |
+| `PARIDHI_DEMO` | Set to `off` to remove the sample-plot demo. |
 | `SUPABASE_JWT_SECRET` | Only for projects still on the legacy shared JWT secret. New projects use the public key set instead. |
 | `DATABASE_CA_CERT` | Optional CA certificate (PEM) so the database certificate is verified. |
 | `PARIDHI_DEVICE_TOKEN` | Shared secret cameras send as `Authorization: Bearer …`. Device ingest is disabled without it. |
@@ -104,7 +117,9 @@ Copy `.env.example` to `.env` (gitignored) or set these in your hosting provider
 
 ### Staff console
 
-Staff sign in like owners and land on `/staff`. What each role can do:
+Staff sign in on the normal sign-in page at `/app` and are taken to `/staff`. Nothing links to it, search engines are
+asked not to index it, and both the page and `/api/staff/*` answer "not found" to everyone who is not staff. What each
+role can do:
 
 | Role | Sees | Can |
 | :--- | :--- | :--- |
@@ -112,8 +127,8 @@ Staff sign in like owners and land on `/staff`. What each role can do:
 | Inspector | Plots assigned to them | Record visits: checklist, notes, and a photo of each corner peg. Photos are shrunk on the phone, stamped with its GPS position, hashed on arrival and checked against the surveyed peg (50 m). Each visit is saved as signed evidence. |
 | Advocate | Plots assigned to them | Confirm a caveat was lodged (starts the 90-day period and closes the owner's renewal request), record the outcome of a flagged application |
 
-Staff accounts are ordinary Supabase Auth users with a row in `staff_members`. In the open demo you act as ops on the
-sample plots; open **Staff console** from the owner view.
+Staff accounts are ordinary Supabase Auth users with a row in `staff_members`. The console needs a database; it is not
+part of the demo.
 
 Photos are stored in Postgres for the pilot (resized to about 250 KB each). Move them to object storage as volume
 grows.
@@ -131,13 +146,15 @@ The plot turns to "Needs attention" and the incident appears in the activity log
 
 ## API
 
-With a database configured, every route except `/api/health`, `/api/evidence/public-key` and device incidents needs
-`Authorization: Bearer <Supabase access token>`. Owner routes only return the signed-in owner's plots, and staff
-routes only the plots the staff member may see; anything else returns 404.
+Owner routes need `Authorization: Bearer <Supabase access token>` and only return the signed-in owner's plots. Staff
+routes only return the plots the staff member may see, and return 404 to anyone who is not staff. The same owner routes
+are available without sign-in on the sample plots under `/api/demo` (for example `GET /api/demo/properties`).
 
 | Method and path | Description |
 | :--- | :--- |
-| `GET /api/health` | Demo or database mode, sign-in settings for the web app, device ingest, signing key id. |
+| `GET /api/health` | Whether the demo and accounts are on, sign-in settings, contact details, device ingest, signing key id. |
+| `POST /api/plot-requests` | Public: book a plot check. Body: `name`, `email`, `state`, `district`, optional `phone`, `country`, `village`, `surveyNumber`, `notes`. |
+| `GET`, `POST /api/me/plot-requests` | Owner: their requests to add a plot. |
 | `GET /api/properties` | The owner's plots. |
 | `GET /api/properties/:id` | One plot. |
 | `POST /api/properties/:id/inspection-requests` | Ask for an extra inspection. Body: `{ "notes": "…" }` (up to 500 characters). |
@@ -158,7 +175,8 @@ routes only the plots the staff member may see; anything else returns 404.
 | `POST /api/staff/properties/:id/flagged-mutations/:mutationId/resolve` | Ops, advocate: record the outcome. |
 | `POST /api/staff/properties/:id/caveats` | Ops, advocate: confirm a caveat was lodged. |
 | `GET`, `POST /api/staff/team`, `DELETE /api/staff/team/:userId` | Ops: list, add or remove staff (database mode only). |
-| `POST /api/properties/:id/registry-checks` | Demo only: simulated check from the owner view. |
+| `GET /api/staff/plot-requests` | Ops: every plot request, newest first. |
+| `POST /api/demo/properties/:id/registry-checks` | Demo only: simulated check from the owner view. |
 | `POST /api/demo/properties/:id/simulate-alert` | Demo only. |
 | `POST /api/demo/properties/:id/reset` | Demo only. |
 
@@ -169,8 +187,11 @@ and routes `/api/*` to the Express app through `api/index.ts`.
 
 Set `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `PARIDHI_SIGNING_KEY` and `PARIDHI_DEVICE_TOKEN` in the
 Vercel project's environment variables. Use Supabase's transaction pooler connection string, which suits serverless
-functions. Without `DATABASE_URL` the deployment is the open demo, and because demo data lives in memory, each
-serverless instance has its own copy and changes may not stick between requests.
+functions. Without `DATABASE_URL` the deployment serves the website and the demo only. Demo data lives in memory, so
+each serverless instance has its own copy and demo changes may not stick between requests.
+
+The link preview image (`web/public/og.png`) is referenced by absolute URL in `web/index.html`; update it when the site
+moves to its own domain.
 
 ## Project layout
 

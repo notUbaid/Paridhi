@@ -83,7 +83,7 @@ export function InspectionsTab({ property, now, onRequestVisit }: InspectionsTab
             {visit.neighborInquiryConducted && visit.neighborFeedback && (
               <blockquote className="flex gap-3 rounded-xl bg-paper border border-line p-4">
                 <Quote className="w-4 h-4 text-accent shrink-0 mt-1" />
-                <p className="font-display text-lg leading-snug text-ink">{visit.neighborFeedback}</p>
+                <p className="font-display text-heading leading-snug text-ink">{visit.neighborFeedback}</p>
               </blockquote>
             )}
 
@@ -135,7 +135,7 @@ export function InspectionsTab({ property, now, onRequestVisit }: InspectionsTab
       <div className="space-y-6">
         <Card title="Schedule" icon={<CalendarClock className="w-5 h-5" />}>
           <div className="eyebrow">{visit ? 'Next monthly visit' : 'First visit'}</div>
-          <div className="font-display text-3xl text-ink mt-1">{formatDate(inspection.nextVisitDue)}</div>
+          <div className="font-display text-title text-ink mt-1">{formatDate(inspection.nextVisitDue)}</div>
           <div className="text-sm text-muted mt-1">
             {inspection.inspectorName}
             {inspection.inspectorId && ` · ${inspection.inspectorId}`}

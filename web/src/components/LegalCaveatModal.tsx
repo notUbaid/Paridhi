@@ -54,7 +54,7 @@ export function LegalCaveatModal({ property, now, open, onClose }: LegalCaveatMo
       }
     >
       <div className="p-6 space-y-4 text-ink text-sm leading-relaxed">
-        <div className="rounded-lg border border-warn-line bg-warn-soft px-3 py-2 text-warn text-[13px]">
+        <div className="rounded-lg border border-warn-line bg-warn-soft px-3 py-2 text-warn text-small">
           Draft for your advocate to review and adapt. It has not been filed. The advocate decides the court, the
           parties to be served and the final wording.
         </div>
@@ -64,7 +64,7 @@ export function LegalCaveatModal({ property, now, open, onClose }: LegalCaveatMo
           <div className="text-muted mt-0.5">
             {location.district} district, {location.state}
           </div>
-          <div className="text-muted text-[13px] mt-1">Caveat under Section 148A of the Code of Civil Procedure, 1908</div>
+          <div className="text-muted text-small mt-1">Caveat under Section 148A of the Code of Civil Procedure, 1908</div>
         </div>
 
         <div className="space-y-3 font-display">
@@ -96,7 +96,7 @@ export function LegalCaveatModal({ property, now, open, onClose }: LegalCaveatMo
             </li>
           </ol>
 
-          <div className="bg-paper p-3 rounded-lg border border-line font-sans text-[13px] space-y-1">
+          <div className="bg-paper p-3 rounded-lg border border-line font-sans text-small space-y-1">
             <div className="font-semibold text-ink">Schedule of property</div>
             <div>Survey number: {property.surveyNumber}</div>
             <div>Extent: {property.plotSizeDisplay}</div>

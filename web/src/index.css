@@ -12,11 +12,12 @@
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --font-deva: "Tiro Devanagari Hindi", "Noto Serif Devanagari", serif;
 
-  --color-paper: #f4efe5;
+  /* The page is a shade darker than the cards on it, so cards read as separate surfaces. */
+  --color-paper: #efe8da;
   --color-surface: #fffcf6;
-  --color-sunken: #ece5d7;
-  --color-line: #e1d8c6;
-  --color-line-strong: #cbbfa8;
+  --color-sunken: #e7dfcf;
+  --color-line: #ddd3c0;
+  --color-line-strong: #c9bca3;
 
   --color-ink: #1d2b24;
   --color-ink-soft: #3a4a41;
@@ -36,6 +37,25 @@
   --color-bad-soft: #f8e2db;
   --color-bad-line: #ebbbae;
 
+  /*
+   * Type scale. Interface text: small (13px) and the 15px body, with Tailwind's sm (14px) and xs
+   * (12px) for dense UI. Headings in the display serif: heading, title, display and hero, the
+   * larger ones fluid so they fit on phones.
+   */
+  --text-small: 0.8125rem;
+  --text-small--line-height: 1.25rem;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.5rem;
+  --text-heading: 1.25rem;
+  --text-heading--line-height: 1.3;
+  --text-title: 1.875rem;
+  --text-title--line-height: 1.15;
+  --text-display: clamp(1.875rem, 1.2rem + 2.2vw, 2.5rem);
+  --text-display--line-height: 1.1;
+  --text-hero: clamp(2.25rem, 1.3rem + 3.6vw, 3.5rem);
+  --text-hero--line-height: 1.04;
+
+  /* Spacing follows Tailwind's 4px steps; layouts use 4, 8, 12, 16, 24, 32 and 64. */
   --radius-card: 1rem;
   --shadow-card: 0 1px 0 rgb(29 43 36 / 0.04), 0 8px 24px -12px rgb(29 43 36 / 0.12);
   --shadow-pop: 0 2px 4px rgb(29 43 36 / 0.06), 0 24px 48px -16px rgb(29 43 36 / 0.28);
@@ -44,6 +64,16 @@
 @layer base {
   :root {
     color-scheme: light;
+  }
+
+  html {
+    scroll-padding-top: 4.5rem;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
   }
 
   body {

@@ -27,7 +27,7 @@ export function PlotHeader({ property, status, lastSyncedAt, syncFailed }: PlotH
         <div className="eyebrow">
           {location.village}, {location.district} · {location.state}
         </div>
-        <h1 className="font-display text-[34px] sm:text-[40px] leading-[1.1] text-ink mt-1.5">{property.name}</h1>
+        <h1 className="font-display text-title sm:text-display text-ink mt-1.5">{property.name}</h1>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-3 text-sm text-muted">
           <StatusBadge status={status} size="md" />
           <span>{property.surveyNumber}</span>

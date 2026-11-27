@@ -156,7 +156,7 @@ export function AddPlotModal({ staff, onClose, onSaved }: AddPlotModalProps) {
     <Modal open onClose={onClose} size="xl" icon={<MapPinned className="w-4 h-4 text-ink-soft shrink-0" />} title="Add a plot">
       <form onSubmit={submit} className="p-5 space-y-5 text-sm">
         <FormSection title="Owner">
-          <p className="text-[13px] text-muted">
+          <p className="text-small text-muted">
             The owner needs an account first (Supabase Authentication, Users). They will see this plot when they sign in.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -199,11 +199,11 @@ export function AddPlotModal({ staff, onClose, onSaved }: AddPlotModalProps) {
             <TextField label="Near" value={form.cityNear} onChange={set('cityNear')} maxLength={120} placeholder="e.g. Hyderabad (18 km)" className="sm:col-span-4" />
           </div>
           <div className="space-y-1.5">
-            <div className="text-[13px] font-medium text-ink-soft">Corner pegs (from the survey), clockwise from north-east</div>
+            <div className="text-small font-medium text-ink-soft">Corner pegs (from the survey), clockwise from north-east</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {CORNERS.map((corner, i) => (
                 <div key={corner} className="flex items-end gap-2">
-                  <span className="text-[13px] font-mono text-muted w-14 pb-2">
+                  <span className="text-small font-mono text-muted w-14 pb-2">
                     P{i + 1} {corner}
                   </span>
                   <TextField
@@ -226,7 +226,7 @@ export function AddPlotModal({ staff, onClose, onSaved }: AddPlotModalProps) {
               ))}
             </div>
             {parsedPegs && (
-              <p className="text-[13px] text-muted font-mono">
+              <p className="text-small text-muted font-mono">
                 Area {polygonAreaAcres(parsedPegs).toFixed(3)} acres · sides{' '}
                 {parsedPegs
                   .map((peg, i) => formatMeters(distanceMeters(peg.position, parsedPegs[(i + 1) % 4].position)))

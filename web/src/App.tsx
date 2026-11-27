@@ -1,48 +1,24 @@
-import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
-import type { HealthResponse } from '@shared/types';
-import { api, errorMessage } from './api';
+import { Suspense, lazy } from 'react';
 import { StatusScreen } from './components/StatusScreen';
-import { Shell } from './Shell';
+import { Landing } from './landing/Landing';
+import { NotFound } from './pages/NotFound';
+import { usePath } from './router';
 
-// Only loaded when the server requires sign-in, so the open demo never downloads the auth client.
-const AuthGate = lazy(() => import('./AuthGate'));
+// The landing page loads on its own; each app loads only when someone opens it.
+const DemoPage = lazy(() => import('./pages/DemoPage'));
+const AccountPage = lazy(() => import('./pages/AccountPage'));
+const StaffPage = lazy(() => import('./pages/StaffPage'));
 
+/** "/": the website. "/demo": sample plots. "/app": owner accounts. "/staff": the hidden staff console. */
 export default function App() {
-  const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const path = usePath().replace(/\/+$/, '') || '/';
 
-  const load = useCallback(async () => {
-    try {
-      setError(null);
-      setHealth(await api.health());
-    } catch (err) {
-      setError(errorMessage(err));
-    }
-  }, []);
+  let page;
+  if (path === '/') page = <Landing />;
+  else if (path === '/demo') page = <DemoPage />;
+  else if (path === '/app') page = <AccountPage />;
+  else if (path === '/staff') page = <StaffPage />;
+  else page = <NotFound />;
 
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  if (error) {
-    return (
-      <StatusScreen
-        title="Can't reach Paridhi"
-        message={error}
-        action={{ label: 'Try again', onClick: () => void load(), icon: <RefreshCw className="w-3.5 h-3.5" /> }}
-      />
-    );
-  }
-  if (!health) return <StatusScreen message="Loading…" />;
-
-  if (health.auth.required) {
-    return (
-      <Suspense fallback={<StatusScreen message="Loading sign-in…" />}>
-        <AuthGate health={health} supabaseUrl={health.auth.supabaseUrl} publishableKey={health.auth.publishableKey} />
-      </Suspense>
-    );
-  }
-
-  return <Shell health={health} account={null} />;
+  return <Suspense fallback={<StatusScreen message="Loading…" />}>{page}</Suspense>;
 }

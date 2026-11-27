@@ -20,7 +20,7 @@ export function Card({ title, description, icon, action, children, className = '
           <div className="flex items-start gap-2.5 min-w-0">
             {icon && <span className="mt-0.5 text-muted shrink-0">{icon}</span>}
             <div className="min-w-0">
-              {title && <h2 className="font-display text-xl leading-tight text-ink">{title}</h2>}
+              {title && <h2 className="font-display text-heading text-ink">{title}</h2>}
               {description && <p className="text-sm text-muted mt-0.5">{description}</p>}
             </div>
           </div>
@@ -50,7 +50,7 @@ export function EmptyState({ icon, title, children }: { icon?: ReactNode; title:
   return (
     <div className="text-center py-8 px-4">
       {icon && <div className="mx-auto mb-3 w-10 h-10 rounded-full bg-sunken text-muted flex items-center justify-center">{icon}</div>}
-      <p className="font-display text-lg text-ink">{title}</p>
+      <p className="font-display text-heading text-ink">{title}</p>
       {children && <div className="text-sm text-muted mt-1 max-w-sm mx-auto">{children}</div>}
     </div>
   );
@@ -70,7 +70,7 @@ export function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md'
     <span
       aria-hidden
       className={`inline-flex items-center justify-center rounded-full bg-sunken text-ink-soft font-medium shrink-0 border border-line ${
-        size === 'sm' ? 'w-7 h-7 text-[11px]' : 'w-10 h-10 text-sm'
+        size === 'sm' ? 'w-7 h-7 text-xs' : 'w-10 h-10 text-sm'
       }`}
     >
       {initials}

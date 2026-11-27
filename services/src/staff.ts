@@ -45,12 +45,13 @@ const PHOTO_TYPES: Record<string, (b: Buffer) => boolean> = {
 const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
 const MAX_PHOTOS_PER_VISIT = 12;
 
-/** The plots a staff member may work on: all for ops (and the demo), otherwise only those assigned to them. */
+/** The plots a staff member may work on: all for ops, otherwise only those assigned to them. */
 export function staffScopeOf(viewer: Viewer): Scope {
-  if (viewer.demo || viewer.staffRole === 'ops') return ALL;
+  if (viewer.staffRole === 'ops') return ALL;
   if (viewer.staffRole === 'inspector') return { kind: 'inspector', userId: viewer.userId! };
   if (viewer.staffRole === 'advocate') return { kind: 'advocate', userId: viewer.userId! };
-  throw new HttpError(403, 'Staff access required');
+  // The console is hidden from everyone who is not staff.
+  throw new HttpError(404, 'Not found');
 }
 
 interface StaffRouterDeps {
@@ -58,7 +59,6 @@ interface StaffRouterDeps {
   signer: EvidenceSigner;
   now: () => Date;
   addActivity: AddActivity;
-  demoMode: boolean;
 }
 
 function isValidTimeZone(timeZone: string): boolean {
@@ -88,17 +88,16 @@ const slug = (text: string) =>
     .replace(/^-|-$/g, '')
     .slice(0, 40) || 'plot';
 
-export function createStaffRouter({ store, signer, now, addActivity, demoMode }: StaffRouterDeps) {
+export function createStaffRouter({ store, signer, now, addActivity }: StaffRouterDeps) {
   const router = express.Router();
 
   const viewerOf = (res: Response) => res.locals.viewer as Viewer;
-  /** The staff member making the request (undefined in the demo, which has no accounts). */
+  /** The staff member making the request. */
   const staffOf = (res: Response) => res.locals.staff as StaffMember | undefined;
-  const actorName = (res: Response) => staffOf(res)?.displayName ?? (viewerOf(res).demo ? 'Paridhi ops (demo)' : 'Paridhi staff');
+  const actorName = (res: Response) => staffOf(res)?.displayName ?? 'Paridhi staff';
 
   function allow(res: Response, ...roles: StaffRole[]) {
     const viewer = viewerOf(res);
-    if (viewer.demo) return;
     if (!viewer.staffRole || !roles.includes(viewer.staffRole)) {
       throw new HttpError(403, 'Your role cannot do this');
     }
@@ -514,6 +513,16 @@ export function createStaffRouter({ store, signer, now, addActivity, demoMode }:
     })
   );
 
+  /* ---------- Plot requests (ops) ---------- */
+
+  router.get(
+    '/plot-requests',
+    handle(async (_req, res) => {
+      allow(res, 'ops');
+      res.json({ requests: await store.listPlotRequests() });
+    })
+  );
+
   /* ---------- Team (ops) ---------- */
 
   router.get(
@@ -528,7 +537,6 @@ export function createStaffRouter({ store, signer, now, addActivity, demoMode }:
     '/team',
     handle(async (req, res) => {
       allow(res, 'ops');
-      if (demoMode) throw new HttpError(409, 'Team changes are not available in the demo');
       const role = requireText(req.body, 'role', 20) as StaffRole;
       if (!['ops', 'inspector', 'advocate'].includes(role)) throw new HttpError(400, '"role" must be ops, inspector or advocate');
       try {
@@ -552,7 +560,6 @@ export function createStaffRouter({ store, signer, now, addActivity, demoMode }:
     '/team/:userId',
     handle(async (req, res) => {
       allow(res, 'ops');
-      if (demoMode) throw new HttpError(409, 'Team changes are not available in the demo');
       if (req.params.userId === viewerOf(res).userId) throw new HttpError(400, 'You cannot remove your own staff access');
       if (!(await store.removeStaff(String(req.params.userId)))) throw new HttpError(404, 'Staff member not found');
       res.status(204).end();

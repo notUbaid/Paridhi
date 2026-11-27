@@ -38,7 +38,7 @@ export function HowItWorksModal({ open, onClose }: { open: boolean; onClose: () 
     >
       <div className="p-6 space-y-6 text-ink text-sm leading-relaxed">
         <section className="p-4 rounded-lg bg-paper border border-line space-y-2">
-          <h3 className="font-display text-xl text-ink">The problem</h3>
+          <h3 className="font-display text-heading text-ink">The problem</h3>
           <p className="text-muted">
             Vacant plots usually have no mains power, no internet and no compound wall, so ordinary home cameras don't
             work there. Encroachment tends to start small: dumped bricks or gravel, a boundary peg moved a foot, a tin
@@ -48,7 +48,7 @@ export function HowItWorksModal({ open, onClose }: { open: boolean; onClose: () 
         </section>
 
         <section>
-          <h3 className="font-display text-xl text-ink mb-3">Four layers</h3>
+          <h3 className="font-display text-heading text-ink mb-3">Four layers</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Part icon={<Camera className="w-3.5 h-3.5" />} title="1. Solar 4G camera">
               An off-the-shelf solar 4G camera on a 4.5 m pole. It uploads scheduled snapshots and motion clips over
@@ -74,27 +74,27 @@ export function HowItWorksModal({ open, onClose }: { open: boolean; onClose: () 
         </section>
 
         <section className="border-t border-line pt-4 space-y-3">
-          <h3 className="font-display text-xl text-ink flex items-center gap-2">
+          <h3 className="font-display text-heading text-ink flex items-center gap-2">
             <Lock className="w-4 h-4 text-ink-soft" />
             Theft resistance
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <div className="p-2.5 rounded-lg bg-paper border border-line">
               <div className="font-semibold text-ink mb-0.5">High pole</div>
-              <div className="text-muted text-[13px]">
+              <div className="text-muted text-small">
                 Galvanised iron pole in a concrete footing, with a loose anti-climb sleeve and security bolts.
               </div>
             </div>
             <div className="p-2.5 rounded-lg bg-paper border border-line">
               <div className="font-semibold text-ink mb-0.5">Footage leaves the site</div>
-              <div className="text-muted text-[13px]">
+              <div className="text-muted text-small">
                 Snapshots upload as they are taken, and a heartbeat every 60 seconds means a camera that goes silent is
                 noticed quickly.
               </div>
             </div>
             <div className="p-2.5 rounded-lg bg-paper border border-line">
               <div className="font-semibold text-ink mb-0.5">Warning sign</div>
-              <div className="text-muted text-[13px]">
+              <div className="text-muted text-small">
                 A notice that the plot is monitored. Final wording is approved by the local advocate.
               </div>
             </div>
@@ -102,7 +102,7 @@ export function HowItWorksModal({ open, onClose }: { open: boolean; onClose: () 
         </section>
 
         <section className="border-t border-line pt-4 space-y-2">
-          <h3 className="font-display text-xl text-ink flex items-center gap-2">
+          <h3 className="font-display text-heading text-ink flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-ink-soft" />
             Records you can check
           </h3>

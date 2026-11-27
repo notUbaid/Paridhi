@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
-import type { HealthResponse } from '@shared/types';
 import { configureAuth } from './api';
 import { SignIn } from './components/SignIn';
 import { StatusScreen } from './components/StatusScreen';
-import { Shell } from './Shell';
+import type { Account } from './session';
 
 const clients = new Map<string, SupabaseClient>();
 
@@ -21,13 +20,16 @@ function supabaseFor(url: string, publishableKey: string): SupabaseClient {
 }
 
 interface AuthGateProps {
-  health: HealthResponse;
   supabaseUrl: string;
   publishableKey: string;
+  /** What signed-in people see. */
+  children: (account: Account, userId: string) => ReactNode;
+  /** What signed-out people see. Defaults to the sign-in screen. */
+  signedOut?: ReactNode;
 }
 
-/** Shows the sign-in screen until the owner has a Supabase session, then the dashboard. */
-export default function AuthGate({ health, supabaseUrl, publishableKey }: AuthGateProps) {
+/** Waits for the Supabase session, then shows the signed-in content or the sign-in screen. */
+export default function AuthGate({ supabaseUrl, publishableKey, children, signedOut }: AuthGateProps) {
   const supabase = useMemo(() => supabaseFor(supabaseUrl, publishableKey), [supabaseUrl, publishableKey]);
   const [session, setSession] = useState<Session | null | undefined>(undefined);
 
@@ -49,13 +51,8 @@ export default function AuthGate({ health, supabaseUrl, publishableKey }: AuthGa
   }, [supabase]);
 
   if (session === undefined) return <StatusScreen message="Checking your session…" />;
-  if (!session) return <SignIn supabase={supabase} />;
+  if (!session) return signedOut ?? <SignIn supabase={supabase} supabaseUrl={supabaseUrl} publishableKey={publishableKey} />;
 
-  return (
-    <Shell
-      key={session.user.id}
-      health={health}
-      account={{ email: session.user.email ?? 'Signed in', signOut: () => void supabase.auth.signOut() }}
-    />
-  );
+  const account: Account = { email: session.user.email ?? 'Signed in', signOut: () => void supabase.auth.signOut() };
+  return <Fragment key={session.user.id}>{children(account, session.user.id)}</Fragment>;
 }

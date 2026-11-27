@@ -12,7 +12,7 @@ interface FieldProps {
 
 function Label({ htmlFor, label, required }: { htmlFor: string; label: string; required?: boolean }) {
   return (
-    <label htmlFor={htmlFor} className="block text-[13px] font-medium text-ink-soft">
+    <label htmlFor={htmlFor} className="block text-small font-medium text-ink-soft">
       {label}
       {required && <span className="text-faint"> *</span>}
     </label>
@@ -76,7 +76,7 @@ export function YesNo({
 }) {
   return (
     <fieldset className="space-y-1.5">
-      <legend className="text-[13px] font-medium text-ink-soft">{label}</legend>
+      <legend className="text-small font-medium text-ink-soft">{label}</legend>
       <div className="inline-flex rounded-lg border border-line-strong overflow-hidden text-sm bg-surface">
         {([true, false] as const).map((option) => (
           <button
@@ -100,7 +100,7 @@ export function FormSection({ title, description, children }: { title: string; d
   return (
     <section className="space-y-3">
       <div>
-        <h3 className="font-display text-lg text-ink">{title}</h3>
+        <h3 className="font-display text-heading text-ink">{title}</h3>
         {description && <p className="text-sm text-muted">{description}</p>}
       </div>
       {children}

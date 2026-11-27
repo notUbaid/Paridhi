@@ -2,6 +2,8 @@ import type {
   Dossier,
   EvidenceRecord,
   HealthResponse,
+  PlotRequest,
+  PlotRequestInput,
   PropertyRecord,
   StaffMember,
   StaffProperty,
@@ -108,22 +110,38 @@ export interface VisitInput {
   photoIds: string[];
 }
 
+/** What an owner can do with their plots. The demo uses the same calls on the sample plots under /demo. */
+export function createOwnerApi(base: '' | '/demo') {
+  const path = (id: string) => `${base}${propertyPath(id)}`;
+  return {
+    demo: base === '/demo',
+    listProperties: () => request<{ properties: PropertyRecord[] }>(`${base}/properties`).then((r) => r.properties),
+    requestInspection: (id: string, notes: string) => post<PropertyResponse>(`${path(id)}/inspection-requests`, { notes }).then(property),
+    checkRegistry: (id: string) => post<PropertyResponse>(`${path(id)}/registry-checks`).then(property),
+    requestCaveatRenewal: (id: string) => post<PropertyResponse>(`${path(id)}/caveat-renewals`).then(property),
+    getDossier: (id: string) => request<{ dossier: Dossier }>(`${path(id)}/dossier`).then((r) => r.dossier),
+    simulateAlert: (id: string) => post<PropertyResponse>(`${path(id)}/simulate-alert`).then(property),
+    resetDemo: (id: string) => post<PropertyResponse>(`${path(id)}/reset`).then(property)
+  };
+}
+
+export type OwnerApi = ReturnType<typeof createOwnerApi>;
+
 export const api = {
   health: () => request<HealthResponse>('/health'),
   me: () => request<{ viewer: Viewer }>('/me').then((r) => r.viewer),
 
-  listProperties: () => request<{ properties: PropertyRecord[] }>('/properties').then((r) => r.properties),
-  requestInspection: (id: string, notes: string) => post<PropertyResponse>(`${propertyPath(id)}/inspection-requests`, { notes }).then(property),
-  checkRegistry: (id: string) => post<PropertyResponse>(`${propertyPath(id)}/registry-checks`).then(property),
-  requestCaveatRenewal: (id: string) => post<PropertyResponse>(`${propertyPath(id)}/caveat-renewals`).then(property),
-  getDossier: (id: string) => request<{ dossier: Dossier }>(`${propertyPath(id)}/dossier`).then((r) => r.dossier),
+  /** The public "book a free plot check" form. `website` is a hidden field people leave empty. */
+  sendPlotRequest: (input: PlotRequestInput & { website: string }) => post<{ received: true }>('/plot-requests', input),
+  myPlotRequests: () => request<{ requests: PlotRequest[] }>('/me/plot-requests').then((r) => r.requests),
+  addMyPlotRequest: (input: PlotRequestInput) =>
+    post<{ request: PlotRequest }>('/me/plot-requests', input).then((r) => r.request),
+
   photoBlob: async (propertyId: string, photoId: string) =>
     (await send(`${propertyPath(propertyId)}/photos/${encodeURIComponent(photoId)}`)).blob(),
 
-  simulateAlert: (id: string) => post<PropertyResponse>(`/demo${propertyPath(id)}/simulate-alert`).then(property),
-  resetDemo: (id: string) => post<PropertyResponse>(`/demo${propertyPath(id)}/reset`).then(property),
-
   staff: {
+    plotRequests: () => request<{ requests: PlotRequest[] }>('/staff/plot-requests').then((r) => r.requests),
     list: () => request<{ properties: StaffProperty[]; staff: StaffMember[] }>('/staff/properties'),
     createPlot: (input: NewPlotInput) => post<PropertyResponse>('/staff/properties', input).then(property),
     assign: (id: string, inspectorUserId: string | null, advocateUserId: string | null) =>

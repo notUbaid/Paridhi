@@ -3,6 +3,7 @@ import {
   getCaveatStatus,
   getPropertyAlerts,
   getPropertyStatus,
+  istDaysBetween,
   type PropertyStatus
 } from '@shared/domain';
 import type { PropertyRecord } from '@shared/types';
@@ -42,7 +43,7 @@ export function summarise(property: PropertyRecord, now: Date): PlotSummary {
   const visit = inspection.latestVisit;
 
   // Field inspection
-  const overdueDays = Math.floor((now.getTime() - new Date(inspection.nextVisitDue).getTime()) / DAY_MS);
+  const overdueDays = istDaysBetween(inspection.nextVisitDue, now);
   if (visit && !visit.boundaryPegsIntact) {
     items.push({
       area: 'inspection',
@@ -86,7 +87,7 @@ export function summarise(property: PropertyRecord, now: Date): PlotSummary {
 
   // Land record
   const flagged = revenue.flaggedMutations.length;
-  const checkAge = revenue.lastCheckedAt ? Math.floor((now.getTime() - new Date(revenue.lastCheckedAt).getTime()) / DAY_MS) : null;
+  const checkAge = revenue.lastCheckedAt ? istDaysBetween(revenue.lastCheckedAt, now) : null;
   if (flagged > 0) {
     items.push({
       area: 'land',

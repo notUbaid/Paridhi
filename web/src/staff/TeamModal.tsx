@@ -78,12 +78,12 @@ export function TeamModal({ viewer, onClose, onChanged }: TeamModalProps) {
                 <tr key={member.userId}>
                   <td className="py-2">
                     <div className="font-medium text-ink">{member.displayName}</div>
-                    <div className="text-[13px] text-muted">{member.email}</div>
+                    <div className="text-small text-muted">{member.email}</div>
                   </td>
                   <td className="py-2">{ROLE_LABEL[member.role]}</td>
-                  <td className="py-2 font-mono text-[13px]">{member.staffCode || '–'}</td>
+                  <td className="py-2 font-mono text-small">{member.staffCode || '–'}</td>
                   <td className="py-2 text-right">
-                    {!viewer.demo && member.userId !== viewer.userId && (
+                    {member.userId !== viewer.userId && (
                       <button type="button" onClick={() => void remove(member)} className="text-bad hover:underline cursor-pointer">
                         Remove
                       </button>
@@ -95,12 +95,9 @@ export function TeamModal({ viewer, onClose, onChanged }: TeamModalProps) {
           </table>
         )}
 
-        {viewer.demo ? (
-          <p className="text-muted">The demo uses a fixed sample team. With a database, ops staff can add and remove people here.</p>
-        ) : (
           <form onSubmit={add} className="space-y-3 border-t border-line pt-4">
-            <div className="text-[13px] font-bold uppercase tracking-wider text-ink">Give someone staff access</div>
-            <p className="text-[13px] text-muted">
+            <div className="text-small font-bold uppercase tracking-wider text-ink">Give someone staff access</div>
+            <p className="text-small text-muted">
               They need an account first (Supabase Authentication, Users). Adding an existing staff member again updates
               their role.
             </p>
@@ -120,7 +117,6 @@ export function TeamModal({ viewer, onClose, onChanged }: TeamModalProps) {
               </button>
             </div>
           </form>
-        )}
 
         <FormError message={error} />
       </div>

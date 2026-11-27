@@ -5,8 +5,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PGlite } from '@electric-sql/pglite';
 import { createApp, type CreateAppOptions } from '../src/app.js';
-import type { AppConfig } from '../src/config.js';
+import type { AppConfig, AuthConfig } from '../src/config.js';
 import type { Database, QueryResult } from '../src/db.js';
+import { MemoryPlotRequestSink } from '../src/plotRequests.js';
 import { SAMPLE_ASSIGNMENTS, SAMPLE_STAFF, createSeedProperties } from '../src/seed.js';
 import { MemoryStore } from '../src/store.js';
 
@@ -23,10 +24,31 @@ export interface TestServer {
   fetchRaw: (path: string, headers?: Record<string, string>) => Promise<Response>;
 }
 
+/** The sample plots, as of FIXED_NOW. Seeded plots belong to DEMO_OWNER_ID. */
+export const sampleStore = () =>
+  new MemoryStore({ properties: () => createSeedProperties(FIXED_NOW), staff: SAMPLE_STAFF, assignments: SAMPLE_ASSIGNMENTS });
+
+/** Sign-in where each listed token stands for one user, and every other token is rejected. */
+export function fakeAuth(tokens: Record<string, { id: string; email: string }> = {}): AuthConfig {
+  return {
+    verify: async (token) => {
+      const user = tokens[token];
+      if (!user) throw new Error('Invalid token');
+      return user;
+    },
+    supabaseUrl: 'https://paridhi-test.supabase.co',
+    publishableKey: 'sb_publishable_test'
+  };
+}
+
+/** By default: the open demo only, with no customer accounts. */
 export async function startServer(overrides: Partial<AppConfig> = {}, options: CreateAppOptions = {}): Promise<TestServer> {
   const config: AppConfig = {
-    store: new MemoryStore({ properties: () => createSeedProperties(FIXED_NOW), staff: SAMPLE_STAFF, assignments: SAMPLE_ASSIGNMENTS }),
+    demo: sampleStore(),
+    store: null,
     auth: null,
+    plotRequests: new MemoryPlotRequestSink({ log: false }),
+    contact: { whatsapp: null, email: null },
     deviceToken: null,
     signingKey: null,
     now: () => FIXED_NOW,

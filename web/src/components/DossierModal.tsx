@@ -2,13 +2,16 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { AlertTriangle, FileCheck, Lock, Printer } from 'lucide-react';
 import { getCaveatStatus, isPhotoWithinGeofence, type PropertyAlert, type PropertyStatus } from '@shared/domain';
 import type { Dossier, PropertyRecord } from '@shared/types';
-import { api, errorMessage } from '../api';
+import { errorMessage } from '../api';
+import { useOwnerApi } from '../owner/ownerApi';
 import { buttonClass } from '../ui/Button';
 import { formatCrore, formatDate, formatDateTime } from '../format';
 import { Modal } from './Modal';
 import { StatusBadge } from '../ui/Badge';
 
 interface SignedDossierContent {
+  /** Set on dossiers of the demo's sample plots. */
+  sampleData?: boolean;
   generatedAt: string;
   status: PropertyStatus;
   alerts: PropertyAlert[];
@@ -18,7 +21,7 @@ interface SignedDossierContent {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="space-y-1.5">
-      <h3 className="font-display text-lg text-ink">{title}</h3>
+      <h3 className="font-display text-heading text-ink">{title}</h3>
       <div className="bg-paper/70 p-4 rounded-xl border border-line">{children}</div>
     </section>
   );
@@ -46,6 +49,7 @@ export function DossierModal({ property, now, open, onClose }: DossierModalProps
     { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; dossier: Dossier; content: SignedDossierContent }
   >({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const ownerApi = useOwnerApi();
   const propertyId = property.id;
   // Re-fetch when the property changes on the server (e.g. after an action), not on every render.
   const version = property.activity[0]?.id;
@@ -54,7 +58,7 @@ export function DossierModal({ property, now, open, onClose }: DossierModalProps
     if (!open) return;
     let cancelled = false;
     setState({ kind: 'loading' });
-    api
+    ownerApi
       .getDossier(propertyId)
       .then((dossier) => {
         if (!cancelled) setState({ kind: 'ready', dossier, content: JSON.parse(dossier.payload) as SignedDossierContent });
@@ -65,7 +69,7 @@ export function DossierModal({ property, now, open, onClose }: DossierModalProps
     return () => {
       cancelled = true;
     };
-  }, [open, propertyId, version, attempt]);
+  }, [open, ownerApi, propertyId, version, attempt]);
 
   const ready = state.kind === 'ready' ? state : null;
 
@@ -129,14 +133,14 @@ function DossierBody({ dossier, content, now }: { dossier: Dossier; content: Sig
           <div className="eyebrow">
             Generated {formatDateTime(content.generatedAt)}
           </div>
-          <div className="font-display text-3xl text-ink mt-1">{p.name}</div>
+          <div className="font-display text-title text-ink mt-1">{p.name}</div>
           <div className="text-muted">
             {p.surveyNumber} · {p.plotSizeDisplay} · {p.location.village}, {p.location.district}, {p.location.state}
           </div>
         </div>
         <div className="sm:text-right space-y-1">
           <StatusBadge status={content.status} />
-          <div className="text-[13px] text-faint">Estimated value {formatCrore(p.marketValuationINR)}</div>
+          <div className="text-small text-faint">Estimated value {formatCrore(p.marketValuationINR)}</div>
         </div>
       </div>
 
@@ -212,8 +216,8 @@ function DossierBody({ dossier, content, now }: { dossier: Dossier; content: Sig
         </div>
       </Section>
 
-      <section className="p-4 rounded-xl border border-line-strong bg-sunken/50 space-y-2.5 text-[13px]">
-        <div className="flex items-center gap-2 font-display text-lg text-ink">
+      <section className="p-4 rounded-xl border border-line-strong bg-sunken/50 space-y-2.5 text-small">
+        <div className="flex items-center gap-2 font-display text-heading text-ink">
           <Lock className="w-4 h-4 text-accent" />
           Integrity record
         </div>
@@ -237,6 +241,9 @@ function DossierBody({ dossier, content, now }: { dossier: Dossier; content: Sig
             </dd>
           </div>
         </dl>
+        {content.sampleData && (
+          <p className="text-warn">Sample data from the Paridhi demo. The signature marks it as sample data, so it cannot pass for a real dossier.</p>
+        )}
         {dossier.signingKeyEphemeral && (
           <p className="text-warn">
             This server is using a temporary signing key, so this signature cannot be checked after a restart. Set

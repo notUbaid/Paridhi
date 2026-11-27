@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, CircleDashed, FileCheck, FileText, OctagonAlert } from 'lucide-react';
 import type { PropertyRecord } from '@shared/types';
-import { formatDate } from '../format';
+import { formatDate, formatRelative } from '../format';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { TONE, type Tone } from '../ui/tone';
@@ -31,9 +31,12 @@ const ITEM_ICON: Record<Tone, typeof CheckCircle2> = {
 
 /** The most recent photo of the plot: the camera's latest, otherwise the last inspection photo. */
 function latestPhoto(property: PropertyRecord) {
-  if (property.camera) return { kind: 'camera' as const, url: property.camera.latestSnapshot.url };
+  if (property.camera) {
+    const { url, capturedAt } = property.camera.latestSnapshot;
+    return { kind: 'camera' as const, url, capturedAt };
+  }
   const photo = property.inspection.latestVisit?.photos[0];
-  return photo ? { kind: 'inspection' as const, photo } : null;
+  return photo ? { kind: 'inspection' as const, photo, capturedAt: photo.capturedAt } : null;
 }
 
 export function OverviewTab({ property, summary, upcoming, now, busy, onAction, onGoTo, onOpenDossier, onOpenCaveatDraft }: OverviewTabProps) {
@@ -45,12 +48,13 @@ export function OverviewTab({ property, summary, upcoming, now, busy, onAction, 
       <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-6 items-start">
         {/* Hero: the plot itself, true to scale */}
         <figure className="order-2 lg:order-1 relative bg-surface rounded-card border border-line shadow-card overflow-hidden">
+          <figcaption className="sr-only">Survey plan of {property.surveyNumber}, drawn to scale from the corner pegs</figcaption>
           <SurveyPlate
             location={property.location}
             surveyNumber={property.surveyNumber}
             pegsIntact={property.inspection.latestVisit?.boundaryPegsIntact ?? true}
           />
-          <figcaption className="border-t border-line">
+          <div className="border-t border-line">
             {photo ? (
               <button
                 type="button"
@@ -59,7 +63,7 @@ export function OverviewTab({ property, summary, upcoming, now, busy, onAction, 
               >
                 <span className="w-16 h-12 rounded-md overflow-hidden border border-line shrink-0 bg-sunken">
                   {photo.kind === 'camera' ? (
-                    <img src={photo.url} alt="" className="w-full h-full object-cover" />
+                    <img src={photo.url} alt="" decoding="async" className="w-full h-full object-cover" />
                   ) : (
                     <PhotoImage propertyId={property.id} photo={photo.photo} alt="" className="w-full h-full object-cover" />
                   )}
@@ -68,20 +72,23 @@ export function OverviewTab({ property, summary, upcoming, now, busy, onAction, 
                   <span className="block text-sm font-medium text-ink">
                     {photo.kind === 'camera' ? 'Latest camera photo' : 'Latest inspection photo'}
                   </span>
-                  <span className="block text-sm text-muted">Survey plan drawn to scale from the corner pegs</span>
+                  <span className="block text-sm text-muted">
+                    Taken {formatRelative(photo.capturedAt, now)}
+                    {photo.kind === 'inspection' && ` at peg ${photo.photo.pegId}`}
+                  </span>
                 </span>
                 <ArrowRight className="w-4 h-4 text-muted group-hover:text-ink shrink-0" />
               </button>
             ) : (
-              <span className="block px-4 py-3 text-sm text-muted">Survey plan drawn to scale from the corner pegs</span>
+              <span className="block px-4 py-3 text-sm text-muted">No photos yet. The first inspection adds them.</span>
             )}
-          </figcaption>
+          </div>
         </figure>
 
         {/* Status in plain words */}
         <Card bodyClassName="p-6" className="order-1 lg:order-2">
           <div className="eyebrow">Today</div>
-          <h2 className={`font-display text-[30px] leading-tight mt-1 ${summary.status === 'ALL_CLEAR' ? 'text-ink' : headlineTone.text}`}>
+          <h2 className={`font-display text-title mt-1 ${summary.status === 'ALL_CLEAR' ? 'text-ink' : headlineTone.text}`}>
             {summary.headline}
           </h2>
           <p className="text-muted mt-1.5">{summary.intro}</p>
@@ -122,10 +129,10 @@ export function OverviewTab({ property, summary, upcoming, now, busy, onAction, 
             {upcoming.map((item) => (
               <li key={item.title} className="flex gap-4">
                 <div className={`w-14 shrink-0 text-center rounded-lg border py-1.5 ${item.overdue ? 'border-warn-line bg-warn-soft text-warn' : 'border-line bg-paper text-ink'}`}>
-                  <div className="text-[11px] uppercase tracking-wide">
+                  <div className="text-xs uppercase tracking-wide">
                     {new Date(item.date).toLocaleDateString('en-IN', { month: 'short', timeZone: 'Asia/Kolkata' })}
                   </div>
-                  <div className="font-display text-xl leading-none mt-0.5">
+                  <div className="font-display text-heading leading-none mt-0.5">
                     {new Date(item.date).toLocaleDateString('en-IN', { day: 'numeric', timeZone: 'Asia/Kolkata' })}
                   </div>
                 </div>

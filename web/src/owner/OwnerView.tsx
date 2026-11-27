@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { LogOut, RefreshCw, RotateCcw, TriangleAlert } from 'lucide-react';
-import type { HealthResponse, PropertyRecord } from '@shared/types';
+import { RefreshCw, RotateCcw, TriangleAlert } from 'lucide-react';
+import type { PlotRequest, PropertyRecord } from '@shared/types';
 import { api, errorMessage } from '../api';
+import { AddPlotModal } from './AddPlotModal';
+import { MyPlotsStart } from './MyPlotsStart';
+import { useOwnerApi } from './ownerApi';
 import { DossierModal } from '../components/DossierModal';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { HowItWorksModal } from '../components/HowItWorksModal';
@@ -26,8 +29,8 @@ import { TopBar } from './TopBar';
 const POLL_INTERVAL_MS = 30_000;
 const CLOCK_TICK_MS = 30_000;
 
-type ModalName = 'how-it-works' | 'dossier' | 'caveat' | 'inspection';
-const MODALS: ModalName[] = ['how-it-works', 'dossier', 'caveat', 'inspection'];
+type ModalName = 'how-it-works' | 'dossier' | 'caveat' | 'inspection' | 'add-plot';
+const MODALS: ModalName[] = ['how-it-works', 'dossier', 'caveat', 'inspection', 'add-plot'];
 const TABS: OwnerTab[] = ['overview', 'site', 'inspections', 'land', 'legal', 'activity'];
 
 function modalFromHash(): ModalName | null {
@@ -41,15 +44,15 @@ function tabFromUrl(): OwnerTab {
 }
 
 interface OwnerViewProps {
-  health: HealthResponse;
-  /** The signed-in owner, or null for the open demo. */
+  /** The signed-in owner, or null for the demo of sample plots. */
   account: Account | null;
-  /** Present for staff (and the demo): opens the staff console. */
-  onOpenStaffConsole?: () => void;
 }
 
-export function OwnerView({ health, account, onOpenStaffConsole }: OwnerViewProps) {
+export default function OwnerView({ account }: OwnerViewProps) {
+  const ownerApi = useOwnerApi();
+  const demo = ownerApi.demo;
   const [properties, setProperties] = useState<PropertyRecord[] | null>(null);
+  const [requests, setRequests] = useState<PlotRequest[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [syncFailed, setSyncFailed] = useState(false);
@@ -66,8 +69,9 @@ export function OwnerView({ health, account, onOpenStaffConsole }: OwnerViewProp
   const refresh = useCallback(async () => {
     const versionAtStart = mutationVersion.current;
     try {
-      const list = await api.listProperties();
+      const [list, pending] = await Promise.all([ownerApi.listProperties(), demo ? [] : api.myPlotRequests()]);
       if (mutationVersion.current === versionAtStart) setProperties(list);
+      setRequests(pending);
       setLastSyncedAt(new Date());
       setSyncFailed(false);
       setLoadError(null);
@@ -75,7 +79,7 @@ export function OwnerView({ health, account, onOpenStaffConsole }: OwnerViewProp
       setSyncFailed(true);
       setLoadError(errorMessage(error));
     }
-  }, []);
+  }, [ownerApi, demo]);
 
   useEffect(() => {
     void refresh();
@@ -145,22 +149,19 @@ export function OwnerView({ health, account, onOpenStaffConsole }: OwnerViewProp
   }
 
   if (properties.length === 0) {
-    return (
-      <StatusScreen
-        title="No plots on your account yet"
-        message={`You're signed in as ${account?.email ?? 'a demo user'}. Your plots appear here once Paridhi has surveyed them and set up monitoring.`}
-        action={account ? { label: 'Sign out', onClick: account.signOut, icon: <LogOut className="w-4 h-4" /> } : undefined}
-      />
+    return account ? (
+      <MyPlotsStart account={account} requests={requests} onRequested={(request) => setRequests((current) => [request, ...current])} />
+    ) : (
+      <StatusScreen title="No sample plots" message="The demo has no plots to show right now." />
     );
   }
 
   const property = properties.find((p) => p.id === selectedId) ?? properties[0];
-  const demoMode = health.demoMode;
   const summary = summarise(property, now);
   const schedule = upcoming(property, now);
 
   const handleRequestInspection = async (notes: string) => {
-    const updated = await api.requestInspection(property.id, notes);
+    const updated = await ownerApi.requestInspection(property.id, notes);
     replaceProperty(updated);
     notify('SUCCESS', 'Visit requested', `${updated.inspection.inspectorName} will aim to visit within 48 hours.`);
   };
@@ -168,7 +169,7 @@ export function OwnerView({ health, account, onOpenStaffConsole }: OwnerViewProp
   const handleCheckRegistry = async () => {
     setBusy('registry');
     try {
-      const updated = await api.checkRegistry(property.id);
+      const updated = await ownerApi.checkRegistry(property.id);
       replaceProperty(updated);
       const flagged = updated.revenue.flaggedMutations.length;
       if (flagged > 0) {
@@ -186,7 +187,7 @@ export function OwnerView({ health, account, onOpenStaffConsole }: OwnerViewProp
   const handleRequestCaveatRenewal = async () => {
     setBusy('caveat');
     try {
-      const updated = await api.requestCaveatRenewal(property.id);
+      const updated = await ownerApi.requestCaveatRenewal(property.id);
       replaceProperty(updated);
       notify('INFO', 'Sent to your advocate', `${updated.legal.advocateName} will confirm once the caveat is lodged.`);
     } catch (error) {
@@ -200,7 +201,7 @@ export function OwnerView({ health, account, onOpenStaffConsole }: OwnerViewProp
   const handleToggleDemoAlert = async () => {
     setBusy('demo');
     try {
-      const updated = demoAlertActive ? await api.resetDemo(property.id) : await api.simulateAlert(property.id);
+      const updated = demoAlertActive ? await ownerApi.resetDemo(property.id) : await ownerApi.simulateAlert(property.id);
       replaceProperty(updated);
       notify(
         demoAlertActive ? 'INFO' : 'ALERT',
@@ -239,9 +240,11 @@ export function OwnerView({ health, account, onOpenStaffConsole }: OwnerViewProp
     <div className="min-h-screen flex flex-col">
       <TopBar
         properties={properties}
+        requests={requests}
         selected={property}
         now={now}
         account={account}
+        demo={demo}
         onSelect={(id) => {
           setSelectedId(id);
           const url = new URL(window.location.href);
@@ -253,15 +256,18 @@ export function OwnerView({ health, account, onOpenStaffConsole }: OwnerViewProp
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         onOpenHowItWorks={() => openModal('how-it-works')}
-        onOpenStaffConsole={onOpenStaffConsole}
+        onAddPlot={account ? () => openModal('add-plot') : undefined}
       />
 
-      {demoMode && (
+      {demo && (
         <div className="bg-warn-soft border-b border-warn-line">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 text-sm text-warn">
             <span>
               <strong className="font-semibold">Demo.</strong> Sample plots, people and records. Nothing is filed with any
-              court or office.
+              court or office.{' '}
+              <a href="/#book" className="font-medium underline underline-offset-2">
+                Book a free plot check
+              </a>
             </span>
             {property.camera && (
               <button
@@ -307,7 +313,7 @@ export function OwnerView({ health, account, onOpenStaffConsole }: OwnerViewProp
                 property={property}
                 now={now}
                 checking={busy === 'registry'}
-                onCheckNow={demoMode ? handleCheckRegistry : undefined}
+                onCheckNow={demo ? handleCheckRegistry : undefined}
               />
             )}
             {tab === 'legal' && (
@@ -338,6 +344,14 @@ export function OwnerView({ health, account, onOpenStaffConsole }: OwnerViewProp
       <LegalCaveatModal property={property} now={now} open={modal === 'caveat'} onClose={closeModal} />
       <DossierModal property={property} now={now} open={modal === 'dossier'} onClose={closeModal} />
       <HowItWorksModal open={modal === 'how-it-works'} onClose={closeModal} />
+      {account && (
+        <AddPlotModal
+          open={modal === 'add-plot'}
+          account={account}
+          onClose={closeModal}
+          onRequested={(request) => setRequests((current) => [request, ...current])}
+        />
+      )}
 
       <Toast toast={toast} onClose={closeToast} />
     </div>

@@ -14,7 +14,7 @@ export function StatusScreen({ title, message, action }: StatusScreenProps) {
     <div className="min-h-screen flex flex-col items-center justify-center gap-8 p-6 bg-paper">
       <Wordmark />
       <div className="bg-surface border border-line rounded-card shadow-card p-7 max-w-md w-full text-center">
-        {title && <h1 className="font-display text-2xl text-ink mb-2">{title}</h1>}
+        {title && <h1 className="font-display text-title text-ink mb-2">{title}</h1>}
         <p className={`leading-relaxed ${title ? 'text-muted' : 'text-ink-soft'}`}>{message}</p>
         {action && (
           <Button variant="primary" onClick={action.onClick} icon={action.icon} className="mt-5">

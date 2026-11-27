@@ -25,7 +25,7 @@ export function LandRecordTab({ property, now, checking, onCheckNow }: LandRecor
             <div className="flex items-start gap-3">
               <OctagonAlert className="w-5 h-5 text-bad shrink-0 mt-0.5" />
               <div className="min-w-0">
-                <h2 className="font-display text-xl text-bad">Someone applied to change your land record</h2>
+                <h2 className="font-display text-heading text-bad">Someone applied to change your land record</h2>
                 <p className="text-sm text-ink-soft mt-1">{mutation.description}</p>
                 <dl className="flex flex-wrap gap-x-6 gap-y-1 mt-3 text-sm">
                   <div>

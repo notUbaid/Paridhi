@@ -12,7 +12,6 @@ import { buttonClass } from '../ui/Button';
 interface RecordVisitModalProps {
   property: PropertyRecord;
   open: boolean;
-  demo: boolean;
   onClose: () => void;
   onSaved: (property: PropertyRecord) => void;
 }
@@ -91,7 +90,7 @@ function PegRow({
   );
 }
 
-export function RecordVisitModal({ property, open, demo, onClose, onSaved }: RecordVisitModalProps) {
+export function RecordVisitModal({ property, open, onClose, onSaved }: RecordVisitModalProps) {
   const [pegsIntact, setPegsIntact] = useState<boolean | null>(null);
   const [debris, setDebris] = useState<boolean | null>(null);
   const [spokeToNeighbours, setSpokeToNeighbours] = useState<boolean | null>(null);
@@ -110,14 +109,7 @@ export function RecordVisitModal({ property, open, demo, onClose, onSaved }: Rec
     setUploadingPeg(peg.id);
     setError(null);
     try {
-      let position: { lat: number; lng: number };
-      try {
-        position = await currentPosition();
-      } catch (locationError) {
-        // The demo has no inspector on site, so it falls back to the peg's own position.
-        if (!demo) throw locationError;
-        position = peg.position;
-      }
+      const position = await currentPosition();
       const image = await prepareImage(file);
       const uploaded = await api.staff.uploadPhoto(property.id, image, {
         pegId: peg.id,
@@ -197,8 +189,8 @@ export function RecordVisitModal({ property, open, demo, onClose, onSaved }: Rec
         />
 
         <div className="space-y-2">
-          <div className="text-[13px] font-medium text-ink-soft">Photos of each corner peg</div>
-          <p className="text-[13px] text-muted">
+          <div className="text-small font-medium text-ink-soft">Photos of each corner peg</div>
+          <p className="text-small text-muted">
             Take each photo standing at the peg. Your phone's location is recorded with it and checked against the
             surveyed peg ({PHOTO_GEOFENCE_METERS} m).
           </p>
@@ -213,7 +205,7 @@ export function RecordVisitModal({ property, open, demo, onClose, onSaved }: Rec
             />
           ))}
           {missingPegs.length > 0 && photos.length > 0 && (
-            <p className="text-[13px] text-warn">No photo yet for {missingPegs.map((peg) => peg.id).join(', ')}.</p>
+            <p className="text-small text-warn">No photo yet for {missingPegs.map((peg) => peg.id).join(', ')}.</p>
           )}
         </div>
 

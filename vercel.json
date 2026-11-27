@@ -4,7 +4,33 @@
   "outputDirectory": "web/dist",
   "framework": "vite",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/api/(.*)",
+      "destination": "/api"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/staff/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/app/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    }
   ]
 }
