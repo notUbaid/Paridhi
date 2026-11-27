@@ -10,25 +10,30 @@
   --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --font-deva: "Tiro Devanagari Hindi", "Noto Serif Devanagari", serif;
+  /* The wordmark's typeface (DM Sans Black), loaded only for the letters of "paridhi". */
+  --font-brand: "DM Sans", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
 
   /* Paper: the page is a shade darker than the cream cards on it. */
-  --color-paper: #f3e5b8;
-  --color-mustard: #ead087;
+  --color-paper: #f6e9bf;
+  --color-mustard: #eacf82;
   --color-surface: #fff8e7;
   --color-sunken: #ecdaa6;
   --color-line: #e0ca90;
   --color-line-strong: #c8ab66;
 
-  --color-ink: #2e3035;
-  --color-ink-soft: #45474d;
-  --color-muted: #625b4a;
-  --color-faint: #7d735b;
+  /* Ink is the logo's dark brown. */
+  --color-ink: #3a2721;
+  --color-ink-soft: #55423a;
+  --color-muted: #6b5848;
+  --color-faint: #857160;
 
   /* Poster red, for the brand and the main calls to action. */
-  --color-accent: #a4332d;
-  --color-accent-deep: #85271f;
+  --color-accent: #a73a35;
+  --color-accent-deep: #872c28;
   --color-accent-soft: #f4d6c2;
-  --color-marigold: #ecaf4b;
+  --color-marigold: #f3b54c;
+  /* Terrain lines behind the brand, a shade deeper than mustard. */
+  --color-terrain: #ddbd6c;
 
   --color-ok: #2f6b45;
   --color-ok-soft: #e1ecd2;
@@ -60,10 +65,10 @@
 
   /* Spacing follows Tailwind's 4px steps; layouts use 4, 8, 12, 16, 24, 32 and 64. */
   --radius-card: 1.25rem;
-  --shadow-card: 0 1px 0 rgb(46 48 53 / 0.05), 0 10px 28px -14px rgb(46 48 53 / 0.22);
-  --shadow-pop: 0 2px 4px rgb(46 48 53 / 0.08), 0 28px 56px -20px rgb(46 48 53 / 0.36);
+  --shadow-card: 0 1px 0 rgb(58 39 33 / 0.05), 0 10px 28px -14px rgb(58 39 33 / 0.22);
+  --shadow-pop: 0 2px 4px rgb(58 39 33 / 0.08), 0 28px 56px -20px rgb(58 39 33 / 0.36);
   /* A flat printed offset shadow, like a poster card. */
-  --shadow-print: 6px 6px 0 rgb(46 48 53 / 0.9);
+  --shadow-print: 6px 6px 0 rgb(58 39 33 / 0.92);
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -314,11 +319,6 @@
     animation-delay: var(--delay, 0ms);
   }
 
-  /* Loading: a plot boundary that draws and undraws itself. */
-  .loader-draw {
-    stroke-dasharray: 1;
-    animation: draw 1.4s ease-in-out infinite alternate;
-  }
 
   .road-dash {
     animation: road-dash 2.4s linear infinite;

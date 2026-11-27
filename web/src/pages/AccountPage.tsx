@@ -75,7 +75,7 @@ function AccountsNotOpen() {
         </p>
       </div>
       <div className="flex flex-wrap justify-center gap-2">
-        <a href="/#book" className={buttonClass('primary')}>
+        <a href="/#book" className={buttonClass('brand')}>
           Book a free plot check
         </a>
         <a href="/demo" className={buttonClass('secondary')}>

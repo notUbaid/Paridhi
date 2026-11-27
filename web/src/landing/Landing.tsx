@@ -24,6 +24,8 @@ import { ILLUSTRATION } from '../owner/illustration';
 import { SurveyPlate } from '../owner/SurveyPlate';
 import { StatusBadge } from '../ui/Badge';
 import { buttonClass } from '../ui/Button';
+import { LogoMark } from '../ui/LogoMark';
+import { TerrainLines } from '../ui/TerrainLines';
 import { Wordmark } from '../ui/Wordmark';
 import { CountUp, Words, delay, useInView } from './motion';
 
@@ -268,6 +270,7 @@ const ROAD = 'M 1560 60 C 1200 90 1010 250 1120 430 C 1230 610 1090 790 780 990'
 function Hero({ sectionRef }: { sectionRef: RefObject<HTMLElement | null> }) {
   return (
     <section ref={sectionRef} className="relative overflow-hidden bg-mustard">
+      <TerrainLines className="absolute inset-0 w-full h-full fade-in" />
       {/* The red road sweeping behind the plot, like a printed poster. */}
       <svg aria-hidden className="absolute inset-0 w-full h-full hidden lg:block" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
         <path d={ROAD} pathLength={1} className="draw" style={{ '--duration': '2200ms' } as CSSProperties} fill="none" stroke="var(--color-accent)" strokeWidth="190" />
@@ -379,17 +382,6 @@ function Ticker() {
 
 /* ---------------------------------------------------------------------------------------- */
 
-function Rings({ className = '', stroke = 'var(--color-accent)' }: { className?: string; stroke?: string }) {
-  return (
-    <svg aria-hidden viewBox="0 0 200 200" className={className} fill="none" stroke={stroke}>
-      <circle cx="100" cy="100" r="92" strokeWidth="12" />
-      <circle cx="100" cy="100" r="66" strokeWidth="12" strokeDasharray="22 12" className="spin-slow" />
-      <circle cx="100" cy="100" r="40" strokeWidth="12" />
-      <circle cx="100" cy="100" r="12" fill={stroke} stroke="none" />
-    </svg>
-  );
-}
-
 function SectionHeading({ eyebrow, title, children, light = false }: { eyebrow: string; title: ReactNode; children?: ReactNode; light?: boolean }) {
   return (
     <div className="max-w-2xl reveal">
@@ -417,7 +409,7 @@ function Problem() {
   ];
   return (
     <section className="relative overflow-hidden bg-paper">
-      <Rings className="absolute -right-24 -top-24 w-80 h-80 hidden sm:block" />
+      <LogoMark className="absolute -right-12 top-10 h-[26rem] w-auto hidden md:block" />
       <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-20 sm:py-28">
         <SectionHeading
           eyebrow="The problem"
@@ -604,7 +596,7 @@ function Report() {
             <div className="absolute left-1/2 top-2 -translate-x-1/2 w-24 h-6 rounded-full bg-ink z-10" aria-hidden />
             <div className="px-4 pt-11 pb-5 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="font-display font-bold text-lg text-ink">Paridhi</span>
+                <Wordmark size="sm" />
                 <StatusBadge status="ALL_CLEAR" />
               </div>
               <div>
@@ -672,7 +664,7 @@ function Steps() {
 function Pricing() {
   return (
     <section id="pricing" className="scroll-mt-16 relative overflow-hidden bg-mustard">
-      <Rings className="absolute -left-28 -bottom-28 w-96 h-96 hidden md:block" />
+      <TerrainLines className="absolute inset-0 w-full h-full" />
       <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-20 sm:py-28 grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-12 items-center">
         <SectionHeading eyebrow="Pricing" title="One monthly price per plot.">
           The camera is included in the monthly price. If your plot needs court work beyond the caveat, your advocate quotes it
@@ -774,7 +766,7 @@ function Book({ sectionRef, contact }: { sectionRef: RefObject<HTMLElement | nul
     : null;
   return (
     <section id="book" ref={sectionRef} className="scroll-mt-16 relative overflow-hidden bg-accent border-t-2 border-ink">
-      <Rings className="absolute -left-40 -top-40 w-[34rem] h-[34rem] opacity-30" stroke="var(--color-marigold)" />
+      <LogoMark className="absolute -left-24 -top-24 h-[40rem] w-auto opacity-25" color="var(--color-marigold)" />
       <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-20 sm:py-28 grid grid-cols-1 lg:grid-cols-[0.85fr_1.15fr] gap-12 items-start">
         <div>
           <SectionHeading eyebrow="Free plot check" title="Tell us where your plot is." light>
@@ -828,16 +820,15 @@ function Book({ sectionRef, contact }: { sectionRef: RefObject<HTMLElement | nul
 
 function Footer() {
   return (
-    <footer className="bg-mustard border-t-2 border-ink pb-24 md:pb-0">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-14 pb-10">
+    <footer className="relative overflow-hidden bg-mustard border-t-2 border-ink pb-24 md:pb-0">
+      <TerrainLines className="absolute inset-0 w-full h-full" />
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-14 pb-10">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-10">
           <div>
-            <div className="flex items-baseline gap-3 select-none" aria-hidden>
-              <span className="font-display font-bold text-ink tracking-tight text-[clamp(3.5rem,10vw,7rem)] leading-none">Paridhi</span>
-              <span className="font-deva text-accent text-[clamp(1.75rem,5vw,3.25rem)]" lang="hi">
-                परिधि
-              </span>
-            </div>
+            <Wordmark size="xl" />
+            <p className="font-deva text-accent text-xl mt-5" lang="hi">
+              परिधि <span className="font-sans text-small text-muted">· the boundary around a place</span>
+            </p>
             <p className="text-ink-soft mt-4 max-w-sm">
               Protecting land in India for owners abroad. Not legal advice: caveats and objections are filed by your advocate.
             </p>

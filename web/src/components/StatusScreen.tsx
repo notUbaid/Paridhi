@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Button } from '../ui/Button';
+import { LogoMark } from '../ui/LogoMark';
 import { Wordmark } from '../ui/Wordmark';
 
 interface StatusScreenProps {
@@ -8,21 +9,9 @@ interface StatusScreenProps {
   action?: { label: string; onClick: () => void; icon?: ReactNode };
 }
 
-/** A plot boundary drawing itself: shown while something loads. */
+/** The mark, its survey point pulsing: shown while something loads. */
 function Loader() {
-  return (
-    <svg viewBox="0 0 64 48" className="w-16 h-12 mx-auto mb-4" aria-hidden>
-      <path d="M 10 12 L 54 6 L 50 40 L 8 36 Z" pathLength={1} className="loader-draw" fill="none" stroke="var(--color-accent)" strokeWidth="2.5" strokeLinejoin="round" />
-      {[
-        [10, 12],
-        [54, 6],
-        [50, 40],
-        [8, 36]
-      ].map(([cx, cy], index) => (
-        <circle key={index} cx={cx} cy={cy} r="3" fill="var(--color-surface)" stroke="var(--color-ink)" strokeWidth="1.5" />
-      ))}
-    </svg>
-  );
+  return <LogoMark contours={4} pulse className="h-20 w-auto mx-auto mb-5" />;
 }
 
 /** Full-page message for loading, errors and empty states. */

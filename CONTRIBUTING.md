@@ -27,6 +27,9 @@ Run `npm run dev:api` and `npm run dev:web` together for hot reload on http://lo
    Tabs, Menu, form fields) rather than raw colours. Headings use the display serif (Fraunces), interface text IBM Plex
    Sans at 14–15 px, and mono only for IDs and hashes. Status colours are for status only: green clear, ochre
    attention, brick action. No glows, neon or dark backgrounds.
+   The logo is the Landprint mark, a "p" drawn as contour lines with a survey point: use `LogoMark` and `Wordmark` in
+   `web/src/ui/` rather than images. Four contours at large sizes, two for icons and anything small. Its terrain lines
+   (`TerrainLines`) are the background texture.
    Write for owners in plain words: say what was checked, what it means, and what they can do.
 6. **Motion.** Use the animation utilities in `web/src/index.css` (`fade-up`, `draw`, `pop`, `reveal`, `scroll-draw`).
    Scroll reveals are tied to the scroll position so content is never left blank, and everything stops for people who
