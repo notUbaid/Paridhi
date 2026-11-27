@@ -1,41 +1,44 @@
 @import "tailwindcss";
 
 /*
- * Paridhi design tokens.
- * Warm "survey paper" surfaces, forest ink for text and primary actions, and one laterite
- * accent (the colour of Indian red soil) for brand moments only. Status colours are muted
- * and never used for decoration.
+ * Paridhi design tokens: a printed-poster palette.
+ * Mustard and cream paper, charcoal ink, one poster red for the brand and calls to action, and
+ * marigold for highlights. Status colours (green, ochre, brick) are for status only.
  */
 @theme {
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Newsreader", "Iowan Old Style", Georgia, serif;
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --font-deva: "Tiro Devanagari Hindi", "Noto Serif Devanagari", serif;
 
-  /* The page is a shade darker than the cards on it, so cards read as separate surfaces. */
-  --color-paper: #efe8da;
-  --color-surface: #fffcf6;
-  --color-sunken: #e7dfcf;
-  --color-line: #ddd3c0;
-  --color-line-strong: #c9bca3;
+  /* Paper: the page is a shade darker than the cream cards on it. */
+  --color-paper: #f3e5b8;
+  --color-mustard: #ead087;
+  --color-surface: #fff8e7;
+  --color-sunken: #ecdaa6;
+  --color-line: #e0ca90;
+  --color-line-strong: #c8ab66;
 
-  --color-ink: #1d2b24;
-  --color-ink-soft: #3a4a41;
-  --color-muted: #66705f;
-  --color-faint: #959a88;
+  --color-ink: #2e3035;
+  --color-ink-soft: #45474d;
+  --color-muted: #625b4a;
+  --color-faint: #7d735b;
 
-  --color-accent: #a4532f;
-  --color-accent-soft: #f3e0d3;
+  /* Poster red, for the brand and the main calls to action. */
+  --color-accent: #a4332d;
+  --color-accent-deep: #85271f;
+  --color-accent-soft: #f4d6c2;
+  --color-marigold: #ecaf4b;
 
-  --color-ok: #2e6a45;
-  --color-ok-soft: #e3efe2;
-  --color-ok-line: #bdd6bf;
-  --color-warn: #8f5d12;
-  --color-warn-soft: #f7ebd2;
-  --color-warn-line: #e6cf9c;
-  --color-bad: #a62b1c;
-  --color-bad-soft: #f8e2db;
-  --color-bad-line: #ebbbae;
+  --color-ok: #2f6b45;
+  --color-ok-soft: #e1ecd2;
+  --color-ok-line: #b2cd9d;
+  --color-warn: #8a560c;
+  --color-warn-soft: #fbe7b5;
+  --color-warn-line: #dcae54;
+  --color-bad: #9e2a22;
+  --color-bad-soft: #f7d9cc;
+  --color-bad-line: #e0a493;
 
   /*
    * Type scale. Interface text: small (13px) and the 15px body, with Tailwind's sm (14px) and xs
@@ -50,15 +53,20 @@
   --text-heading--line-height: 1.3;
   --text-title: 1.875rem;
   --text-title--line-height: 1.15;
-  --text-display: clamp(1.875rem, 1.2rem + 2.2vw, 2.5rem);
-  --text-display--line-height: 1.1;
-  --text-hero: clamp(2.25rem, 1.3rem + 3.6vw, 3.5rem);
-  --text-hero--line-height: 1.04;
+  --text-display: clamp(2rem, 1.2rem + 2.6vw, 2.875rem);
+  --text-display--line-height: 1.05;
+  --text-hero: clamp(2.5rem, 1.2rem + 4.6vw, 4.375rem);
+  --text-hero--line-height: 0.98;
 
   /* Spacing follows Tailwind's 4px steps; layouts use 4, 8, 12, 16, 24, 32 and 64. */
-  --radius-card: 1rem;
-  --shadow-card: 0 1px 0 rgb(29 43 36 / 0.04), 0 8px 24px -12px rgb(29 43 36 / 0.12);
-  --shadow-pop: 0 2px 4px rgb(29 43 36 / 0.06), 0 24px 48px -16px rgb(29 43 36 / 0.28);
+  --radius-card: 1.25rem;
+  --shadow-card: 0 1px 0 rgb(46 48 53 / 0.05), 0 10px 28px -14px rgb(46 48 53 / 0.22);
+  --shadow-pop: 0 2px 4px rgb(46 48 53 / 0.08), 0 28px 56px -20px rgb(46 48 53 / 0.36);
+  /* A flat printed offset shadow, like a poster card. */
+  --shadow-print: 6px 6px 0 rgb(46 48 53 / 0.9);
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @layer base {
@@ -67,7 +75,7 @@
   }
 
   html {
-    scroll-padding-top: 4.5rem;
+    scroll-padding-top: 5rem;
   }
 
   @media (prefers-reduced-motion: no-preference) {
@@ -98,6 +106,12 @@
     text-wrap: balance;
   }
 
+  /* Display headings use Fraunces' soft, slightly retro cut. */
+  .font-display {
+    font-weight: 600;
+    font-variation-settings: "SOFT" 60, "WONK" 0;
+  }
+
   :focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
@@ -114,10 +128,289 @@
   .eyebrow {
     font-size: 0.75rem;
     line-height: 1rem;
-    font-weight: 500;
-    letter-spacing: 0.06em;
+    font-weight: 600;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--color-faint);
+    color: var(--color-muted);
+  }
+}
+
+/* ------------------------------------------------------------------------------------------
+ * Motion
+ * Load animations run once. Scroll reveals are tied to the scroll position (no waiting on a
+ * timer, so nothing is ever left blank while scrolling) and only where the browser supports
+ * scroll-driven animation; elsewhere content simply shows. Everything stops for people who
+ * ask for reduced motion.
+ * ------------------------------------------------------------------------------------------ */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.55em);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* A ring that grows out from the plot and fades: the plot is being watched. */
+@keyframes watch-ring {
+  from {
+    opacity: 0.55;
+    transform: scale(0.35);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes road-dash {
+  to {
+    stroke-dashoffset: -64;
+  }
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(36px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes grow-y {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@layer utilities {
+  /* Hero words rise one after another; set --i on each word. */
+  .word-rise {
+    display: inline-block;
+    animation: rise 0.8s var(--ease-out-expo) both;
+    animation-delay: calc(80ms * var(--i, 0) + 120ms);
+  }
+
+  .fade-up {
+    animation: fade-up 0.7s var(--ease-out-expo) both;
+    animation-delay: var(--delay, 0ms);
+  }
+
+  /* Quick entrance for app panels and cards. */
+  .enter {
+    animation: fade-up 0.4s var(--ease-out-expo) both;
+    animation-delay: var(--delay, 0ms);
+  }
+
+  .fade-in {
+    animation: fade-in 0.5s ease-out both;
+    animation-delay: var(--delay, 0ms);
+  }
+
+  /* SVG strokes that draw themselves. The element needs pathLength="1". */
+  .draw {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: draw var(--duration, 1.4s) var(--ease-out-expo) forwards;
+    animation-delay: var(--delay, 0ms);
+  }
+
+  .pop {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: pop 0.55s var(--ease-spring) both;
+    animation-delay: var(--delay, 0ms);
+  }
+
+  .watch-ring {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: watch-ring 3.6s ease-out infinite;
+    animation-delay: var(--delay, 0ms);
+  }
+
+  /* Loading: a plot boundary that draws and undraws itself. */
+  .loader-draw {
+    stroke-dasharray: 1;
+    animation: draw 1.4s ease-in-out infinite alternate;
+  }
+
+  .road-dash {
+    animation: road-dash 2.4s linear infinite;
+  }
+
+  .spin-slow {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: spin-slow 60s linear infinite;
+  }
+
+  .marquee-track {
+    animation: marquee 38s linear infinite;
+  }
+  .marquee:hover .marquee-track {
+    animation-play-state: paused;
+  }
+
+  .sheet-in {
+    animation: sheet-in 0.22s var(--ease-out-expo) both;
+  }
+
+  /* Lifts a card a little under the pointer. */
+  .lift {
+    transition:
+      transform 0.35s var(--ease-out-expo),
+      box-shadow 0.35s var(--ease-out-expo);
+  }
+  @media (hover: hover) {
+    .lift:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-pop);
+    }
+  }
+
+  .press {
+    transition: transform 0.15s var(--ease-out-expo);
+  }
+  .press:active {
+    transform: scale(0.97);
+  }
+}
+
+/* Scroll-driven: reveal as an element enters, draw a road as it passes, fill the progress bar. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      animation: reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+
+    .scroll-draw {
+      stroke-dasharray: 1;
+      animation: draw linear both;
+      animation-timeline: view();
+      animation-range: entry 20% cover 55%;
+    }
+
+    .scroll-grow-y {
+      transform-origin: top;
+      animation: grow-y linear both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 60%;
+    }
+
+    .scroll-grow-x {
+      transform-origin: left;
+      animation: grow-x linear both;
+      animation-timeline: view();
+      animation-range: entry 30% cover 50%;
+    }
+
+    .scroll-progress {
+      transform-origin: left;
+      animation: grow-x linear both;
+      animation-timeline: scroll(root);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.001ms !important;
+  }
+  .watch-ring {
+    display: none;
   }
 }
 

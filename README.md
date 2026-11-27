@@ -18,6 +18,8 @@ The site has four parts:
 | `/app` | Owner accounts: sign in or sign up, see your plots, add a plot. Needs a database. |
 | `/staff` | The staff console. Linked from nowhere, and shows "Page not found" to anyone who is not signed in as staff. |
 
+![The Paridhi website](assets/screenshots/website.png)
+
 ![Dashboard overview](assets/screenshots/dashboard-overview.png)
 
 ## The problem

@@ -292,7 +292,7 @@ export default function OwnerView({ account }: OwnerViewProps) {
         </div>
 
         <ErrorBoundary>
-          <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="pb-16" key={`${property.id}-${tab}`}>
+          <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="pb-16 enter" key={`${property.id}-${tab}`}>
             {tab === 'overview' && (
               <OverviewTab
                 property={property}

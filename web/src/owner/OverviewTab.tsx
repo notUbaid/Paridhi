@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, CircleDashed, FileCheck, FileText, OctagonAlert } from 'lucide-react';
 import type { PropertyRecord } from '@shared/types';
 import { formatDate, formatRelative } from '../format';
@@ -53,6 +53,7 @@ export function OverviewTab({ property, summary, upcoming, now, busy, onAction, 
             location={property.location}
             surveyNumber={property.surveyNumber}
             pegsIntact={property.inspection.latestVisit?.boundaryPegsIntact ?? true}
+            animate
           />
           <div className="border-t border-line">
             {photo ? (
@@ -94,10 +95,10 @@ export function OverviewTab({ property, summary, upcoming, now, busy, onAction, 
           <p className="text-muted mt-1.5">{summary.intro}</p>
 
           <ul className="mt-5 divide-y divide-line border-t border-line">
-            {summary.items.map((item) => {
+            {summary.items.map((item, index) => {
               const Icon = ITEM_ICON[item.tone];
               return (
-                <li key={item.area} className="py-4 flex gap-3">
+                <li key={item.area} className="py-4 flex gap-3 enter" style={{ '--delay': `${120 + index * 70}ms` } as CSSProperties}>
                   <Icon className={`w-5 h-5 mt-0.5 shrink-0 ${TONE[item.tone].text}`} aria-hidden />
                   <div className="min-w-0 flex-1">
                     <div className="font-medium text-ink">{item.title}</div>

@@ -1,10 +1,12 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
-export type ButtonSize = 'sm' | 'md';
+export type ButtonVariant = 'primary' | 'brand' | 'secondary' | 'ghost' | 'danger';
+export type ButtonSize = 'sm' | 'md' | 'lg';
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: 'bg-ink text-surface hover:bg-ink-soft border border-ink',
+  /* Poster red: the main call to action on a page. */
+  brand: 'bg-accent text-surface hover:bg-accent-deep border border-accent-deep',
   secondary: 'bg-surface text-ink border border-line-strong hover:bg-sunken',
   ghost: 'text-ink-soft hover:bg-sunken hover:text-ink border border-transparent',
   danger: 'bg-surface text-bad border border-bad-line hover:bg-bad-soft'
@@ -12,12 +14,13 @@ const VARIANTS: Record<ButtonVariant, string> = {
 
 const SIZES: Record<ButtonSize, string> = {
   sm: 'h-8 px-3 text-small gap-1.5',
-  md: 'h-10 px-4 text-sm gap-2'
+  md: 'h-10 px-4 text-sm gap-2',
+  lg: 'h-12 px-6 text-body gap-2'
 };
 
 /** Classes for a button-styled element (also used for links that look like buttons). */
 export function buttonClass(variant: ButtonVariant = 'secondary', size: ButtonSize = 'md', extra = '') {
-  return `inline-flex items-center justify-center rounded-lg font-medium whitespace-nowrap transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-default ${VARIANTS[variant]} ${SIZES[size]} ${extra}`;
+  return `inline-flex items-center justify-center rounded-lg font-medium whitespace-nowrap transition-colors cursor-pointer press disabled:opacity-50 disabled:cursor-default ${VARIANTS[variant]} ${SIZES[size]} ${extra}`;
 }
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

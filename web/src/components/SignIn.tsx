@@ -119,7 +119,7 @@ export function SignIn({ supabase, supabaseUrl, publishableKey }: SignInProps) {
         </a>
         <div className="max-w-lg">
           <div className="rounded-card overflow-hidden border border-line shadow-card bg-surface">
-            <SurveyPlate location={ILLUSTRATION} surveyNumber="Sy. No. 412/A" />
+            <SurveyPlate location={ILLUSTRATION} surveyNumber="Sy. No. 412/A" animate watch />
           </div>
           <h2 className="font-display text-title text-ink mt-8">Your land in India, watched over while you're away.</h2>
           <ul className="mt-5 space-y-2 text-ink-soft">

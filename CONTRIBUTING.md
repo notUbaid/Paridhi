@@ -22,11 +22,15 @@ Run `npm run dev:api` and `npm run dev:web` together for hot reload on http://lo
    advice needs an advocate's review.
 4. **Sample data stays obviously fake.** Use `example.com` emails, reserved fictional phone numbers (555-01xx in North
    America, 07700 900xxx or 020 7946 0xxx in the UK) and zeroed enrolment numbers.
-5. **Design.** Use the tokens in `web/src/index.css` (warm paper surfaces, forest ink, one laterite accent) and the
-   components in `web/src/ui/` (Button, Card, Badge, Tabs, Menu, form fields) rather than raw colours. Headings use the
-   display serif (Newsreader), interface text IBM Plex Sans at 14–15 px, and mono only for IDs and hashes. Status
-   colours are for status only: green clear, ochre attention, brick action. No gradients, glows or dark backgrounds.
+5. **Design.** Use the tokens in `web/src/index.css` (mustard and cream paper, charcoal ink, one poster red for the
+   brand and main calls to action, marigold for highlights) and the components in `web/src/ui/` (Button, Card, Badge,
+   Tabs, Menu, form fields) rather than raw colours. Headings use the display serif (Fraunces), interface text IBM Plex
+   Sans at 14–15 px, and mono only for IDs and hashes. Status colours are for status only: green clear, ochre
+   attention, brick action. No glows, neon or dark backgrounds.
    Write for owners in plain words: say what was checked, what it means, and what they can do.
+6. **Motion.** Use the animation utilities in `web/src/index.css` (`fade-up`, `draw`, `pop`, `reveal`, `scroll-draw`).
+   Scroll reveals are tied to the scroll position so content is never left blank, and everything stops for people who
+   prefer reduced motion. Keep app motion short (under 0.5 s); longer motion belongs on the website.
 
 ## Where help is welcome
 

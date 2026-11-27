@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, type CSSProperties } from 'react';
 import { bearingDegrees, centerOf, distanceMeters, formatQuadrantBearing, polygonAreaAcres } from '@shared/domain';
 import type { BoundaryPeg, PropertyLocation } from '@shared/types';
 
@@ -14,13 +14,21 @@ interface SurveyPlateProps {
   /** False marks the pegs as disturbed. */
   pegsIntact?: boolean;
   className?: string;
+  /** Draw the boundary, then pop in the pegs and labels, when it first appears. */
+  animate?: boolean;
+  /** Rings that pulse out from the plot: it is being watched. */
+  watch?: boolean;
 }
+
+/** Inline style with animation timing variables. */
+const timing = (delay: number, duration?: number) =>
+  ({ '--delay': `${delay}ms`, ...(duration ? { '--duration': `${duration}ms` } : {}) }) as CSSProperties;
 
 /**
  * A true-to-scale survey plan drawn from the plot's peg coordinates: north up, with side
  * lengths and bearings, neighbours, a scale bar and the enclosed area.
  */
-export function SurveyPlate({ location, surveyNumber, pegsIntact = true, className = '' }: SurveyPlateProps) {
+export function SurveyPlate({ location, surveyNumber, pegsIntact = true, className = '', animate = false, watch = false }: SurveyPlateProps) {
   const hatchId = useId().replace(/:/g, '');
   const pegs = location.boundaryPegs;
   if (pegs.length < 3) {
@@ -89,6 +97,11 @@ export function SurveyPlate({ location, surveyNumber, pegsIntact = true, classNa
   const squareMeters = acres * 4046.8564224;
   const pegColor = pegsIntact ? 'var(--color-accent)' : 'var(--color-bad)';
   const neighbours = location.boundaries;
+  const outline = `M ${points.map((p) => `${p.x} ${p.y}`).join(' L ')} Z`;
+  const ringRadius = Math.max(...points.map((p) => Math.hypot(p.x - centroid.x, p.y - centroid.y))) * 1.45;
+  const anim = (name: string) => (animate ? name : undefined);
+  // The boundary takes about 1.6 s to draw; each peg pops as the line reaches it.
+  const pegDelay = (i: number) => 150 + (i * 1300) / points.length;
 
   return (
     <svg
@@ -111,16 +124,33 @@ export function SurveyPlate({ location, surveyNumber, pegsIntact = true, classNa
       <rect width={W} height={H} fill={`url(#grid-${hatchId})`} />
       <rect x="8" y="8" width={W - 16} height={H - 16} fill="none" stroke="var(--color-line-strong)" strokeWidth="1" />
 
+      {/* Watching: rings pulse out from the plot */}
+      {watch &&
+        [0, 1200, 2400].map((delay) => (
+          <circle
+            key={delay}
+            className="watch-ring"
+            style={timing(delay + (animate ? 1600 : 0))}
+            cx={centroid.x}
+            cy={centroid.y}
+            r={ringRadius}
+            fill="none"
+            stroke="var(--color-accent)"
+            strokeWidth="1.5"
+            opacity="0"
+          />
+        ))}
+
       {/* Plot */}
-      <polygon
-        points={points.map((p) => `${p.x},${p.y}`).join(' ')}
-        fill="var(--color-accent-soft)"
-        fillOpacity="0.55"
-        stroke="none"
-      />
-      <polygon points={points.map((p) => `${p.x},${p.y}`).join(' ')} fill={`url(#hatch-${hatchId})`} />
-      <polygon
-        points={points.map((p) => `${p.x},${p.y}`).join(' ')}
+      <g className={anim('fade-in')} style={timing(900)}>
+        <path d={outline} fill="var(--color-accent-soft)" fillOpacity="0.55" stroke="none" />
+        <path d={outline} fill={`url(#hatch-${hatchId})`} />
+      </g>
+      <path
+        d={outline}
+        pathLength={1}
+        className={anim('draw')}
+        style={timing(150, 1600)}
         fill="none"
         stroke="var(--color-ink)"
         strokeWidth="1.75"
@@ -128,25 +158,29 @@ export function SurveyPlate({ location, surveyNumber, pegsIntact = true, classNa
       />
 
       {/* Side lengths and bearings */}
-      {edges.map((edge) => (
-        <g key={edge.key} transform={`translate(${edge.x} ${edge.y}) rotate(${edge.angle})`}>
-          <text textAnchor="middle" y="-3" fontFamily="var(--font-sans)" fontSize="13" fontWeight="500" fill="var(--color-ink)">
-            {edge.meters >= 100 ? edge.meters.toFixed(0) : edge.meters.toFixed(1)} m
-          </text>
-          <text textAnchor="middle" y="11" fontFamily="var(--font-mono)" fontSize="10" fill="var(--color-muted)">
-            {edge.bearing}
-          </text>
-        </g>
-      ))}
+      <g className={anim('fade-in')} style={timing(1300)}>
+        {edges.map((edge) => (
+          <g key={edge.key} transform={`translate(${edge.x} ${edge.y}) rotate(${edge.angle})`}>
+            <text textAnchor="middle" y="-3" fontFamily="var(--font-sans)" fontSize="13" fontWeight="500" fill="var(--color-ink)">
+              {edge.meters >= 100 ? edge.meters.toFixed(0) : edge.meters.toFixed(1)} m
+            </text>
+            <text textAnchor="middle" y="11" fontFamily="var(--font-mono)" fontSize="10" fill="var(--color-muted)">
+              {edge.bearing}
+            </text>
+          </g>
+        ))}
+      </g>
 
       {/* Area */}
-      <g transform={`translate(${centroid.x} ${centroid.y})`}>
-        <text textAnchor="middle" y="-2" fontFamily="var(--font-display)" fontSize="22" fill="var(--color-ink)">
-          {acres >= 0.1 ? acres.toFixed(2) : acres.toFixed(3)} acres
-        </text>
-        <text textAnchor="middle" y="16" fontFamily="var(--font-sans)" fontSize="11" fill="var(--color-muted)">
-          {Math.round(squareMeters).toLocaleString('en-IN')} m²
-        </text>
+      <g className={anim('fade-in')} style={timing(1100)}>
+        <g transform={`translate(${centroid.x} ${centroid.y})`}>
+          <text textAnchor="middle" y="-2" fontFamily="var(--font-display)" fontSize="22" fill="var(--color-ink)">
+            {acres >= 0.1 ? acres.toFixed(2) : acres.toFixed(3)} acres
+          </text>
+          <text textAnchor="middle" y="16" fontFamily="var(--font-sans)" fontSize="11" fill="var(--color-muted)">
+            {Math.round(squareMeters).toLocaleString('en-IN')} m²
+          </text>
+        </g>
       </g>
 
       {/* Pegs */}
@@ -157,9 +191,13 @@ export function SurveyPlate({ location, surveyNumber, pegsIntact = true, classNa
         const d = Math.hypot(dx, dy) || 1;
         return (
           <g key={peg.id}>
-            <circle cx={point.x} cy={point.y} r="6" fill="var(--color-surface)" stroke={pegColor} strokeWidth="2.25" />
-            <circle cx={point.x} cy={point.y} r="2" fill={pegColor} />
+            <g className={anim('pop')} style={timing(pegDelay(i))}>
+              <circle cx={point.x} cy={point.y} r="6" fill="var(--color-surface)" stroke={pegColor} strokeWidth="2.25" />
+              <circle cx={point.x} cy={point.y} r="2" fill={pegColor} />
+            </g>
             <text
+              className={anim('fade-in')}
+              style={timing(pegDelay(i) + 200)}
               x={point.x + (dx / d) * 20}
               y={point.y + (dy / d) * 20 + 4}
               textAnchor={dx > 0 ? 'start' : 'end'}

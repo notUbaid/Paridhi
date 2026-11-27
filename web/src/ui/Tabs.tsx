@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 
 export interface TabItem<T extends string> {
   id: T;
@@ -22,6 +22,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, label }: TabsPro
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const scroller = useRef<HTMLDivElement>(null);
   const [overflow, setOverflow] = useState({ left: false, right: false });
+  const [indicator, setIndicator] = useState<{ left: number; width: number } | null>(null);
 
   const measure = useCallback(() => {
     const el = scroller.current;
@@ -41,6 +42,20 @@ export function Tabs<T extends string>({ tabs, value, onChange, label }: TabsPro
       el.removeEventListener('scroll', measure);
     };
   }, [measure]);
+
+  // The underline slides to the selected tab.
+  useLayoutEffect(() => {
+    const place = () => {
+      const tab = refs.current[tabs.findIndex((t) => t.id === value)];
+      if (tab) setIndicator({ left: tab.offsetLeft, width: tab.offsetWidth });
+    };
+    place();
+    const el = scroller.current;
+    if (!el) return;
+    const observer = new ResizeObserver(place);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [tabs, value]);
 
   useEffect(() => {
     // Scroll only the tab strip sideways, never the page.
@@ -62,7 +77,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, label }: TabsPro
 
   return (
     <div className="relative">
-      <div ref={scroller} role="tablist" aria-label={label} className="flex gap-1 overflow-x-auto -mb-px [scrollbar-width:none]">
+      <div ref={scroller} role="tablist" aria-label={label} className="relative flex gap-1 overflow-x-auto -mb-px [scrollbar-width:none]">
         {tabs.map((tab, index) => {
           const selected = tab.id === value;
           return (
@@ -79,8 +94,8 @@ export function Tabs<T extends string>({ tabs, value, onChange, label }: TabsPro
               tabIndex={selected ? 0 : -1}
               onClick={() => onChange(tab.id)}
               onKeyDown={(event) => onKeyDown(event, index)}
-              className={`relative flex items-center gap-1.5 px-3 py-3 text-sm whitespace-nowrap cursor-pointer border-b-2 transition-colors ${
-                selected ? 'border-accent text-ink font-medium' : 'border-transparent text-muted hover:text-ink'
+              className={`relative flex items-center gap-1.5 px-3 py-3 text-sm whitespace-nowrap cursor-pointer border-b-2 border-transparent transition-colors ${
+                selected ? 'text-ink font-medium' : 'text-muted hover:text-ink'
               }`}
             >
               {tab.label}
@@ -88,6 +103,13 @@ export function Tabs<T extends string>({ tabs, value, onChange, label }: TabsPro
             </button>
           );
         })}
+        {indicator && (
+          <span
+            aria-hidden
+            className="absolute bottom-0 h-[3px] rounded-full bg-accent transition-[left,width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            style={{ left: indicator.left, width: indicator.width }}
+          />
+        )}
       </div>
       {/* Shows there is more to scroll to. */}
       <div
